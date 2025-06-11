@@ -119,9 +119,215 @@ class DatabaseManager(FundingRateDB):
     # ==================== 資金費率差異數據操作 ====================
     
     def insert_funding_rate_diff(self, df: pd.DataFrame) -> int:
-        """插入資金費率差異數據"""
+        """插入資金費率差異數據 - 解法2：批量處理+SQLite優化版本"""
         if df.empty:
             return 0
+        
+        print(f"🚀 解法2優化處理: {len(df)} 條記錄...")
+        
+        # ==================== SQLite高級優化設置 ====================
+        def optimize_sqlite_connection(conn):
+            """SQLite性能優化設置"""
+            print("⚡ 啟用SQLite高級優化...")
+            
+            # WAL模式 - 允許同時讀寫，大幅提升並發性能
+            conn.execute("PRAGMA journal_mode = WAL")
+            
+            # 同步模式優化 - 減少磁盤同步，提升寫入速度
+            conn.execute("PRAGMA synchronous = NORMAL")  # 從FULL改為NORMAL，性能提升3-5倍
+            
+            # 緩存大小優化 - 使用更大內存緩存
+            conn.execute("PRAGMA cache_size = -64000")  # 64MB緩存（負數表示KB）
+            
+            # 臨時存儲優化 - 使用內存存儲臨時數據
+            conn.execute("PRAGMA temp_store = MEMORY")
+            
+            # 頁面大小優化 - 4KB頁面適合大批量插入
+            conn.execute("PRAGMA page_size = 4096")
+            
+            # Checkpoint優化 - 控制WAL文件大小
+            conn.execute("PRAGMA wal_autocheckpoint = 10000")
+            
+            print("✅ SQLite優化設置完成")
+        
+        # ✅ 向量化預處理（比解法1更高效的版本）
+        print("📊 向量化預處理...")
+        df_clean = df.copy()
+        
+        # 高效時間戳處理 - 使用更快的向量化操作
+        timestamp_col = 'timestamp_utc' if 'timestamp_utc' in df_clean.columns else 'Timestamp (UTC)'
+        if timestamp_col in df_clean.columns:
+            # 使用pandas最快的時間轉換方法
+            df_clean['timestamp_utc'] = pd.to_datetime(df_clean[timestamp_col], format='mixed', errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            df_clean['timestamp_utc'] = ''
+        
+        # 批量列名映射 - 一次性處理所有列名
+        column_mapping = {
+            'Symbol': 'symbol',
+            'Exchange_A': 'exchange_a', 
+            'Exchange_B': 'exchange_b',
+            'FundingRate_A': 'funding_rate_a',
+            'FundingRate_B': 'funding_rate_b', 
+            'Diff_AB': 'diff_ab'
+        }
+        
+        # 高效重命名
+        existing_renames = {old: new for old, new in column_mapping.items() if old in df_clean.columns}
+        if existing_renames:
+            df_clean = df_clean.rename(columns=existing_renames)
+        
+        # 向量化數值處理 - 使用最快的數值轉換
+        numeric_columns = ['diff_ab', 'funding_rate_a', 'funding_rate_b']
+        for col in numeric_columns:
+            if col in df_clean.columns:
+                df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce', downcast='float').fillna(0.0)
+            else:
+                df_clean[col] = 0.0
+        
+        # 字符串列快速處理
+        string_columns = ['symbol', 'exchange_a', 'exchange_b']
+        for col in string_columns:
+            if col in df_clean.columns:
+                df_clean[col] = df_clean[col].astype('string').fillna('')
+            else:
+                df_clean[col] = ''
+        
+        # 選擇最終列並確保順序
+        required_columns = ['timestamp_utc', 'symbol', 'exchange_a', 'funding_rate_a', 'exchange_b', 'funding_rate_b', 'diff_ab']
+        df_final = df_clean[required_columns].copy()
+        
+        print("✅ 向量化預處理完成")
+        
+        # ==================== 批量插入優化 ====================
+        batch_size = 50000  # 5萬條一批，平衡內存和性能
+        total_rows = len(df_final)
+        total_inserted = 0
+        
+        print(f"📦 開始批量插入 ({batch_size:,} 條/批)...")
+        
+        # 使用優化的數據庫連接
+        with self.get_connection() as conn:
+            # 應用SQLite優化設置
+            optimize_sqlite_connection(conn)
+            
+            # 開始事務 - 批量提交減少I/O
+            conn.execute("BEGIN TRANSACTION")
+            
+            try:
+                # 分批處理數據
+                for i in range(0, total_rows, batch_size):
+                    batch_end = min(i + batch_size, total_rows)
+                    batch_df = df_final.iloc[i:batch_end]
+                    
+                    print(f"   處理批次 {i//batch_size + 1}/{(total_rows-1)//batch_size + 1}: {len(batch_df):,} 條")
+                    
+                    # 高效數據轉換 - 使用NumPy數組直接轉換
+                    batch_data = batch_df.values.tolist()
+                    
+                    # 批量插入
+                    conn.executemany('''
+                        INSERT OR REPLACE INTO funding_rate_diff 
+                        (timestamp_utc, symbol, exchange_a, funding_rate_a, exchange_b, funding_rate_b, diff_ab)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', batch_data)
+                    
+                    total_inserted += len(batch_data)
+                
+                # 提交事務
+                conn.commit()
+                print("✅ 批量提交完成")
+                
+                # WAL checkpoint - 確保數據持久化
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                
+            except Exception as e:
+                conn.rollback()
+                print(f"❌ 批量插入失敗，已回滾: {e}")
+                raise
+        
+        print(f"✅ 解法2優化完成: {total_inserted:,} 條記錄")
+        return total_inserted
+    
+    def insert_funding_rate_diff_v1(self, df: pd.DataFrame) -> int:
+        """插入資金費率差異數據 - 解法1：向量化處理版本（保留用於對比）"""
+        if df.empty:
+            return 0
+        
+        print(f"🚀 向量化處理 (解法1): {len(df)} 條記錄...")
+        
+        # ✅ 向量化預處理（一次性處理所有數據，避免逐行循環）
+        df_clean = df.copy()
+        
+        # 向量化時間戳處理 - 一次性轉換所有時間戳
+        timestamp_col = 'timestamp_utc' if 'timestamp_utc' in df_clean.columns else 'Timestamp (UTC)'
+        if timestamp_col in df_clean.columns:
+            df_clean['timestamp_utc'] = pd.to_datetime(df_clean[timestamp_col]).dt.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            df_clean['timestamp_utc'] = ''
+        
+        # 向量化列名處理 - 統一列名格式
+        if 'symbol' not in df_clean.columns and 'Symbol' in df_clean.columns:
+            df_clean['symbol'] = df_clean['Symbol']
+        if 'exchange_a' not in df_clean.columns and 'Exchange_A' in df_clean.columns:
+            df_clean['exchange_a'] = df_clean['Exchange_A']
+        if 'exchange_b' not in df_clean.columns and 'Exchange_B' in df_clean.columns:
+            df_clean['exchange_b'] = df_clean['Exchange_B']
+        if 'funding_rate_a' not in df_clean.columns and 'FundingRate_A' in df_clean.columns:
+            df_clean['funding_rate_a'] = df_clean['FundingRate_A']
+        if 'funding_rate_b' not in df_clean.columns and 'FundingRate_B' in df_clean.columns:
+            df_clean['funding_rate_b'] = df_clean['FundingRate_B']
+        if 'diff_ab' not in df_clean.columns and 'Diff_AB' in df_clean.columns:
+            df_clean['diff_ab'] = df_clean['Diff_AB']
+        
+        # 向量化數值處理 - 一次性處理所有空值和類型轉換
+        df_clean['diff_ab'] = pd.to_numeric(df_clean.get('diff_ab', 0), errors='coerce').fillna(0.0)
+        df_clean['funding_rate_a'] = pd.to_numeric(df_clean.get('funding_rate_a', 0), errors='coerce').fillna(0.0)
+        df_clean['funding_rate_b'] = pd.to_numeric(df_clean.get('funding_rate_b', 0), errors='coerce').fillna(0.0)
+        
+        # 確保字符串列存在且不為空
+        df_clean['symbol'] = df_clean.get('symbol', '').astype(str).fillna('')
+        df_clean['exchange_a'] = df_clean.get('exchange_a', '').astype(str).fillna('')
+        df_clean['exchange_b'] = df_clean.get('exchange_b', '').astype(str).fillna('')
+        
+        # 選擇最終需要的列
+        required_columns = ['timestamp_utc', 'symbol', 'exchange_a', 'funding_rate_a', 'exchange_b', 'funding_rate_b', 'diff_ab']
+        
+        # 確保所有必需列都存在
+        for col in required_columns:
+            if col not in df_clean.columns:
+                if col in ['funding_rate_a', 'funding_rate_b', 'diff_ab']:
+                    df_clean[col] = 0.0
+                else:
+                    df_clean[col] = ''
+        
+        df_final = df_clean[required_columns].copy()
+        
+        # ✅ 快速轉換為插入數據（避免iterrows循環）
+        print("   正在轉換數據格式...")
+        data_to_insert = [tuple(row) for row in df_final.values]
+        
+        # 插入數據庫
+        print("   正在插入數據庫...")
+        with self.get_connection() as conn:
+            conn.executemany('''
+                INSERT OR REPLACE INTO funding_rate_diff 
+                (timestamp_utc, symbol, exchange_a, funding_rate_a, exchange_b, funding_rate_b, diff_ab)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', data_to_insert)
+            
+            # 明確提交事務
+            conn.commit()
+        
+        print(f"✅ 解法1完成: {len(data_to_insert)} 條")
+        return len(data_to_insert)
+    
+    def insert_funding_rate_diff_legacy(self, df: pd.DataFrame) -> int:
+        """插入資金費率差異數據 - 舊版本：逐行處理（保留用於性能對比）"""
+        if df.empty:
+            return 0
+        
+        print(f"⚠️ 使用舊版逐行處理: {len(df)} 條記錄...")
             
         with self.get_connection() as conn:
             data_to_insert = []
@@ -156,7 +362,7 @@ class DatabaseManager(FundingRateDB):
             # 明確提交事務
             conn.commit()
             
-            print(f"✅ 插入資金費率差異數據: {len(data_to_insert)} 條")
+            print(f"✅ 舊版插入完成: {len(data_to_insert)} 條")
             return len(data_to_insert)
     
     def get_funding_rate_diff(self, symbol: str = None, start_date: str = None, 

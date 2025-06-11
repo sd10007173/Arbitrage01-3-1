@@ -181,7 +181,7 @@ class DatabaseManager(FundingRateDB):
         numeric_columns = ['diff_ab', 'funding_rate_a', 'funding_rate_b']
         for col in numeric_columns:
             if col in df_clean.columns:
-                df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0.0)
+                df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce', downcast='float').fillna(0.0)
             else:
                 df_clean[col] = 0.0
         

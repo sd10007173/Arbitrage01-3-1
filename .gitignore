@@ -1,0 +1,8 @@
+# Python
+__pycache__/
+*.py[cod]
+.DS_Store
+csv_backup/
+archived/
+csv/
+data/

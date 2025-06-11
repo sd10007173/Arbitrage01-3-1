@@ -1,0 +1,356 @@
+2025-06-10 13:49:15 - 開始智能增量處理市值>0的交易對，目標區間：2025-06-06 ~ 2025-06-07
+2025-06-10 13:49:15 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 13:49:15 - 讀取到 321 筆交易對資料。
+2025-06-10 13:49:15 - 找到 0 個市值>0的交易對。
+2025-06-10 13:49:15 - 選取前 0 個交易對進行智能增量處理。
+2025-06-10 13:49:15 - ✅ 智能增量處理完成
+2025-06-10 13:50:54 - 開始智能增量處理市值>0的交易對，目標區間：2025-06-06 ~ 2025-06-07
+2025-06-10 13:50:54 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 13:50:54 - 讀取到 321 筆交易對資料。
+2025-06-10 13:50:54 - 找到 2 個市值>0的交易對。
+2025-06-10 13:50:54 - 選取前 2 個交易對進行智能增量處理。
+2025-06-10 13:50:54 - 開始智能增量處理交易對 BTCUSDT
+2025-06-10 13:50:54 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 13:50:54 -   選擇的交易所: binance, bybit
+2025-06-10 13:50:54 - BTCUSDT_binance: 獲取數據 2025-06-06 至 2025-06-07
+2025-06-10 13:50:54 - ✅ API調用成功: 2025-06-06 ~ 2025-06-07
+2025-06-10 13:50:55 - BTCUSDT_bybit: 獲取數據 2025-06-06 至 2025-06-07
+2025-06-10 13:50:56 - ✅ API調用成功: 2025-06-06 ~ 2025-06-07
+2025-06-10 13:50:57 - 開始智能增量處理交易對 ETHUSDT
+2025-06-10 13:50:57 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 13:50:57 -   選擇的交易所: binance, bybit
+2025-06-10 13:50:57 - ETHUSDT_binance: 獲取數據 2025-06-06 至 2025-06-07
+2025-06-10 13:50:57 - ✅ API調用成功: 2025-06-06 ~ 2025-06-07
+2025-06-10 13:50:58 - ETHUSDT_bybit: 獲取數據 2025-06-06 至 2025-06-07
+2025-06-10 13:50:58 - ✅ API調用成功: 2025-06-06 ~ 2025-06-07
+2025-06-10 13:50:59 - ✅ 已更新 2 個交易對的 FR_Date
+2025-06-10 13:50:59 - ✅ 智能增量處理完成
+2025-06-10 14:57:09 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-05
+2025-06-10 14:57:09 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 14:57:09 - 讀取到 321 筆交易對資料。
+2025-06-10 14:57:09 - 找到 0 個市值>0的交易對。
+2025-06-10 14:57:09 - 選取前 0 個交易對進行智能增量處理。
+2025-06-10 14:57:09 - ✅ 智能增量處理完成
+2025-06-10 16:02:07 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-05
+2025-06-10 16:02:07 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:02:07 - 讀取到 321 筆交易對資料。
+2025-06-10 16:02:07 - 找到 0 個市值>0的交易對。
+2025-06-10 16:02:07 - 選取前 0 個交易對進行智能增量處理。
+2025-06-10 16:02:07 - ✅ 智能增量處理完成
+2025-06-10 16:06:41 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-03
+2025-06-10 16:06:41 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:06:41 - 讀取到 321 筆交易對資料。
+2025-06-10 16:06:41 - 找到 0 個市值>0的交易對。
+2025-06-10 16:06:41 - 選取前 0 個交易對進行智能增量處理。
+2025-06-10 16:06:41 - ✅ 智能增量處理完成
+2025-06-10 16:07:26 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-03
+2025-06-10 16:07:26 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:07:26 - 讀取到 321 筆交易對資料。
+2025-06-10 16:07:26 - 找到 0 個市值>0的交易對。
+2025-06-10 16:07:26 - 選取前 0 個交易對進行智能增量處理。
+2025-06-10 16:07:26 - ✅ 智能增量處理完成
+2025-06-10 16:23:38 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-03
+2025-06-10 16:23:39 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:23:39 - 讀取到 321 筆交易對資料。
+2025-06-10 16:23:39 - 找到 3 個市值>0的交易對。
+2025-06-10 16:23:39 - 選取前 3 個交易對進行智能增量處理。
+2025-06-10 16:23:39 - 開始智能增量處理交易對 BTCUSDT
+2025-06-10 16:23:39 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:23:39 -   選擇的交易所: binance, bybit
+2025-06-10 16:23:39 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:23:39 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:23:40 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:23:41 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:23:43 - 開始智能增量處理交易對 ETHUSDT
+2025-06-10 16:23:43 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:23:43 -   選擇的交易所: binance, bybit
+2025-06-10 16:23:43 - ETHUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:23:43 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:23:44 - ETHUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:23:45 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:23:46 - 開始智能增量處理交易對 XRPUSDT
+2025-06-10 16:23:46 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:23:46 -   選擇的交易所: binance, bybit
+2025-06-10 16:23:46 - XRPUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:23:47 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:23:48 - XRPUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:23:49 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:23:50 - ✅ 已更新 3 個交易對的 FR_Date
+2025-06-10 16:23:50 - ✅ 智能增量處理完成
+2025-06-10 16:27:27 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-01
+2025-06-10 16:27:27 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:27:27 - 讀取到 321 筆交易對資料。
+2025-06-10 16:27:27 - 找到 3 個市值>0的交易對。
+2025-06-10 16:27:27 - 選取前 1 個交易對進行智能增量處理。
+2025-06-10 16:27:27 - 開始智能增量處理交易對 BTCUSDT
+2025-06-10 16:27:27 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:27:27 -   選擇的交易所: binance, bybit
+2025-06-10 16:27:27 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-01
+2025-06-10 16:27:28 - ✅ API調用成功: 2024-01-01 ~ 2024-01-01
+2025-06-10 16:27:28 - ✅ 數據已直接保存到數據庫 (BTCUSDT_binance)
+2025-06-10 16:27:29 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-01
+2025-06-10 16:27:30 - ✅ API調用成功: 2024-01-01 ~ 2024-01-01
+2025-06-10 16:27:30 - ✅ 數據已直接保存到數據庫 (BTCUSDT_bybit)
+2025-06-10 16:27:31 - ✅ 已更新 1 個交易對的 FR_Date
+2025-06-10 16:27:31 - ✅ 智能增量處理完成
+2025-06-10 16:29:07 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-01
+2025-06-10 16:29:07 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:29:07 - 讀取到 321 筆交易對資料。
+2025-06-10 16:29:07 - 找到 3 個市值>0的交易對。
+2025-06-10 16:29:07 - 選取前 1 個交易對進行智能增量處理。
+2025-06-10 16:29:07 - 開始智能增量處理交易對 BTCUSDT
+2025-06-10 16:29:07 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:29:07 -   選擇的交易所: binance, bybit
+2025-06-10 16:29:07 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-01
+2025-06-10 16:29:07 - ✅ API調用成功: 2024-01-01 ~ 2024-01-01
+2025-06-10 16:29:07 - ✅ 數據已直接保存到數據庫 (BTCUSDT_binance)
+2025-06-10 16:29:08 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-01
+2025-06-10 16:29:10 - ✅ API調用成功: 2024-01-01 ~ 2024-01-01
+2025-06-10 16:29:10 - ✅ 數據已直接保存到數據庫 (BTCUSDT_bybit)
+2025-06-10 16:29:11 - ✅ 已更新 1 個交易對的 FR_Date
+2025-06-10 16:29:11 - ✅ 智能增量處理完成
+2025-06-10 16:29:34 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-03
+2025-06-10 16:29:34 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:29:34 - 讀取到 321 筆交易對資料。
+2025-06-10 16:29:34 - 找到 3 個市值>0的交易對。
+2025-06-10 16:29:34 - 選取前 3 個交易對進行智能增量處理。
+2025-06-10 16:29:34 - 開始智能增量處理交易對 BTCUSDT
+2025-06-10 16:29:34 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:29:34 -   選擇的交易所: binance, bybit
+2025-06-10 16:29:34 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:29:35 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:29:35 - ✅ 數據已直接保存到數據庫 (BTCUSDT_binance)
+2025-06-10 16:29:36 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:29:37 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:29:37 - ✅ 數據已直接保存到數據庫 (BTCUSDT_bybit)
+2025-06-10 16:29:38 - 開始智能增量處理交易對 ETHUSDT
+2025-06-10 16:29:38 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:29:38 -   選擇的交易所: binance, bybit
+2025-06-10 16:29:38 - ETHUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:29:39 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:29:39 - ✅ 數據已直接保存到數據庫 (ETHUSDT_binance)
+2025-06-10 16:29:40 - ETHUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:29:41 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:29:41 - ✅ 數據已直接保存到數據庫 (ETHUSDT_bybit)
+2025-06-10 16:29:42 - 開始智能增量處理交易對 XRPUSDT
+2025-06-10 16:29:42 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:29:42 -   選擇的交易所: binance, bybit
+2025-06-10 16:29:42 - XRPUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:29:43 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:29:43 - ✅ 數據已直接保存到數據庫 (XRPUSDT_binance)
+2025-06-10 16:29:44 - XRPUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:29:44 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:29:44 - ✅ 數據已直接保存到數據庫 (XRPUSDT_bybit)
+2025-06-10 16:29:45 - ✅ 已更新 3 個交易對的 FR_Date
+2025-06-10 16:29:45 - ✅ 智能增量處理完成
+2025-06-10 16:41:19 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-03
+2025-06-10 16:41:19 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-10 16:41:19 - 讀取到 321 筆交易對資料。
+2025-06-10 16:41:19 - 找到 2 個市值>0的交易對。
+2025-06-10 16:41:19 - 選取前 2 個交易對進行智能增量處理。
+2025-06-10 16:41:19 - 開始智能增量處理交易對 BTCUSDT
+2025-06-10 16:41:19 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:41:19 -   選擇的交易所: binance, bybit
+2025-06-10 16:41:19 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:41:20 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:41:20 - ✅ 數據已直接保存到數據庫 (BTCUSDT_binance)
+2025-06-10 16:41:21 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:41:22 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:41:22 - ✅ 數據已直接保存到數據庫 (BTCUSDT_bybit)
+2025-06-10 16:41:23 - 開始智能增量處理交易對 ETHUSDT
+2025-06-10 16:41:23 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-10 16:41:23 -   選擇的交易所: binance, bybit
+2025-06-10 16:41:23 - ETHUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:41:24 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:41:24 - ✅ 數據已直接保存到數據庫 (ETHUSDT_binance)
+2025-06-10 16:41:25 - ETHUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-10 16:41:26 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-10 16:41:26 - ✅ 數據已直接保存到數據庫 (ETHUSDT_bybit)
+2025-06-10 16:41:27 - ✅ 已更新 2 個交易對的 FR_Date
+2025-06-10 16:41:27 - ✅ 智能增量處理完成
+2025-06-11 00:53:34 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-03
+2025-06-11 00:53:34 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-11 00:53:34 - 讀取到 321 筆交易對資料。
+2025-06-11 00:53:34 - 找到 2 個市值>0的交易對。
+2025-06-11 00:53:34 - 選取前 2 個交易對進行智能增量處理。
+2025-06-11 00:53:34 - 開始智能增量處理交易對 BTCUSDT
+2025-06-11 00:53:34 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 00:53:34 -   選擇的交易所: binance, bybit
+2025-06-11 00:53:34 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 00:53:35 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-11 00:53:35 - ✅ 數據已直接保存到數據庫 (BTCUSDT_binance)
+2025-06-11 00:53:36 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 00:53:37 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-11 00:53:37 - ✅ 數據已直接保存到數據庫 (BTCUSDT_bybit)
+2025-06-11 00:53:38 - 開始智能增量處理交易對 ETHUSDT
+2025-06-11 00:53:38 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 00:53:38 -   選擇的交易所: binance, bybit
+2025-06-11 00:53:38 - ETHUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 00:53:39 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-11 00:53:39 - ✅ 數據已直接保存到數據庫 (ETHUSDT_binance)
+2025-06-11 00:53:40 - ETHUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 00:53:41 - ✅ API調用成功: 2024-01-01 ~ 2024-01-03
+2025-06-11 00:53:41 - ✅ 數據已直接保存到數據庫 (ETHUSDT_bybit)
+2025-06-11 00:53:42 - ✅ 已更新 2 個交易對的 FR_Date
+2025-06-11 00:53:42 - ✅ 智能增量處理完成
+2025-06-11 01:03:09 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-10
+2025-06-11 01:03:09 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-11 01:03:09 - 讀取到 321 筆交易對資料。
+2025-06-11 01:03:09 - 找到 2 個市值>0的交易對。
+2025-06-11 01:03:09 - 選取前 2 個交易對進行智能增量處理。
+2025-06-11 01:03:09 - 開始智能增量處理交易對 BTCUSDT
+2025-06-11 01:03:09 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 01:03:09 -   選擇的交易所: binance, bybit
+2025-06-11 01:03:09 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:03:15 - ❌ API調用失敗 2024-01-01~2024-01-10: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:03:15 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:03:22 - ❌ API調用失敗 2024-01-01~2024-01-10: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:03:22 - 開始智能增量處理交易對 ETHUSDT
+2025-06-11 01:03:22 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 01:03:22 -   選擇的交易所: binance, bybit
+2025-06-11 01:03:22 - ETHUSDT_binance: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:03:29 - ❌ API調用失敗 2024-01-01~2024-01-10: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:03:29 - ETHUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:03:36 - ❌ API調用失敗 2024-01-01~2024-01-10: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:03:36 - ✅ 智能增量處理完成
+2025-06-11 01:04:05 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-03
+2025-06-11 01:04:05 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-11 01:04:05 - 讀取到 321 筆交易對資料。
+2025-06-11 01:04:05 - 找到 2 個市值>0的交易對。
+2025-06-11 01:04:05 - 選取前 2 個交易對進行智能增量處理。
+2025-06-11 01:04:05 - 開始智能增量處理交易對 BTCUSDT
+2025-06-11 01:04:05 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 01:04:05 -   選擇的交易所: binance, bybit
+2025-06-11 01:04:05 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 01:04:12 - ❌ API調用失敗 2024-01-01~2024-01-03: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:04:12 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 01:04:18 - ❌ API調用失敗 2024-01-01~2024-01-03: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:04:18 - 開始智能增量處理交易對 ETHUSDT
+2025-06-11 01:04:18 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 01:04:18 -   選擇的交易所: binance, bybit
+2025-06-11 01:04:18 - ETHUSDT_binance: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 01:04:24 - ❌ API調用失敗 2024-01-01~2024-01-03: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:04:24 - ETHUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-03
+2025-06-11 01:04:30 - ❌ API調用失敗 2024-01-01~2024-01-03: Traceback (most recent call last):
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 389, in <module>
+    main()
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 380, in main
+    saved_count = save_to_database(aggregated_data, EXCHANGE, SYMBOL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/fetch_FR_history.py", line 116, in save_to_database
+    inserted_count = db.insert_funding_rate_history(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/waynechen/Downloads/Arbitrage01-3/database_operations.py", line 68, in insert_funding_rate_history
+    conn.executemany('''
+sqlite3.OperationalError: database is locked
+
+2025-06-11 01:04:30 - ✅ 智能增量處理完成
+2025-06-11 01:05:31 - 開始智能增量處理市值>0的交易對，目標區間：2024-01-01 ~ 2024-01-10
+2025-06-11 01:05:31 - ✅ 從數據庫讀取到 321 筆交易對資料
+2025-06-11 01:05:31 - 讀取到 321 筆交易對資料。
+2025-06-11 01:05:31 - 找到 2 個市值>0的交易對。
+2025-06-11 01:05:31 - 選取前 2 個交易對進行智能增量處理。
+2025-06-11 01:05:31 - 開始智能增量處理交易對 BTCUSDT
+2025-06-11 01:05:31 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 01:05:31 -   選擇的交易所: binance, bybit
+2025-06-11 01:05:31 - BTCUSDT_binance: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:05:33 - ✅ API調用成功: 2024-01-01 ~ 2024-01-10
+2025-06-11 01:05:33 - ✅ 數據已直接保存到數據庫 (BTCUSDT_binance)
+2025-06-11 01:05:34 - BTCUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:05:35 - ✅ API調用成功: 2024-01-01 ~ 2024-01-10
+2025-06-11 01:05:35 - ✅ 數據已直接保存到數據庫 (BTCUSDT_bybit)
+2025-06-11 01:05:36 - 開始智能增量處理交易對 ETHUSDT
+2025-06-11 01:05:36 -   可用交易所: binance, bybit, gate.io, okx
+2025-06-11 01:05:36 -   選擇的交易所: binance, bybit
+2025-06-11 01:05:36 - ETHUSDT_binance: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:05:38 - ✅ API調用成功: 2024-01-01 ~ 2024-01-10
+2025-06-11 01:05:38 - ✅ 數據已直接保存到數據庫 (ETHUSDT_binance)
+2025-06-11 01:05:39 - ETHUSDT_bybit: 獲取數據 2024-01-01 至 2024-01-10
+2025-06-11 01:05:40 - ✅ API調用成功: 2024-01-01 ~ 2024-01-10
+2025-06-11 01:05:40 - ✅ 數據已直接保存到數據庫 (ETHUSDT_bybit)
+2025-06-11 01:05:41 - ✅ 已更新 2 個交易對的 FR_Date
+2025-06-11 01:05:41 - ✅ 智能增量處理完成

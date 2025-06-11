@@ -17,8 +17,8 @@ plt.rcParams['axes.unicode_minus'] = False
 
 # ===== 策略參數設定（在這裡修改你的參數）=====
 INITIAL_CAPITAL = 10000  # 初始資金
-POSITION_SIZE = 0.5  # 每次進場資金比例 (25%)
-FEE_RATE = 0.0007  # 手續費率 (0.07%)
+POSITION_SIZE = 0.33  # 每次進場資金比例 (25%)
+FEE_RATE = 0.001  # 手續費率 (0.07%)
 EXIT_SIZE = 1.0  # 每次離場資金比例 (100%)
 MAX_POSITIONS = 2  # 最大持倉數 <<<--- 在這裡修改
 ENTRY_TOP_N = 2  # 進場條件: 綜合評分前N名 <<<--- 在這裡修改
@@ -26,7 +26,7 @@ EXIT_THRESHOLD = 10  # 離場條件: 排名跌出前N名
 
 # ===== 回測期間設定 =====
 START_DATE = "2024-01-01"  # 開始日期 (修改為有數據的日期)
-END_DATE = "2024-01-05"  # 結束日期 - 延長至3天以看到完整回測效果
+END_DATE = "2025-06-06"  # 結束日期 - 延長至3天以看到完整回測效果
 # 移除CSV依賴，全部使用數據庫
 
 
@@ -774,11 +774,14 @@ class FundingRateBacktest:
             total_return = final_capital - self.initial_capital
             total_roi = total_return / self.initial_capital
             
-            # 計算年化報酬率
+            # 計算年化報酬率 (ROI)
             if self.backtest_days > 0:
-                annualized_roi = total_roi * 365 / self.backtest_days
+                roi = total_roi * 365 / self.backtest_days
             else:
-                annualized_roi = 0
+                roi = 0
+            
+            # 計算回測總天數
+            total_days = self.backtest_days
             
             win_rate = self.calculate_win_rate()
             avg_holding_days = self.calculate_average_holding_days()
@@ -797,7 +800,8 @@ class FundingRateBacktest:
                 'final_capital': float(final_capital),
                 'total_return': float(total_return),
                 'total_roi': float(total_roi),
-                'annualized_roi': float(annualized_roi),
+                'roi': float(roi),
+                'total_days': int(total_days),
                 'max_drawdown': float(self.max_drawdown),
                 'max_balance': float(self.max_balance),
                 'position_size': float(self.position_size),
@@ -830,6 +834,8 @@ class FundingRateBacktest:
             results = {
                 'final_balance': backtest_summary['final_capital'],
                 'total_return': backtest_summary['total_roi'],
+                'roi': backtest_summary['roi'],
+                'total_days': backtest_summary['total_days'],
                 'max_drawdown': backtest_summary['max_drawdown'],
                 'win_rate': backtest_summary['win_rate'],
                 'total_trades': backtest_summary['total_trades'],
@@ -837,7 +843,7 @@ class FundingRateBacktest:
                 'loss_days': backtest_summary['loss_days'],
                 'avg_holding_days': backtest_summary['avg_holding_days'],
                 'sharpe_ratio': None,  # 如果有計算夏普比率可以加入
-                'notes': f"回測期間: {backtest_summary['backtest_days']} 天"
+                'notes': f"回測期間: {backtest_summary['total_days']} 天"
             }
             
             db.insert_backtest_result(

@@ -463,129 +463,45 @@ class DatabaseManager(FundingRateDB):
     # ==================== 策略排行榜數據操作 ====================
     
     def insert_strategy_ranking(self, df: pd.DataFrame, strategy_name: str) -> int:
-        """插入策略排行榜數據 - NumPy + SQLite 極速優化版本"""
+        """插入策略排行榜數據"""
         if df.empty:
             return 0
-        
-        print(f"⚡ NumPy極速處理策略排行榜: {len(df)} 條記錄 (策略: {strategy_name})")
-        
-        # ==================== 步驟1: 列預處理映射優化 ====================
-        print("📊 步驟1: 向量化列預處理...")
-        df_prepared = df.copy()
-        
-        # 一次性向量化列映射，消除重複row.get()調用 (節省13.6%耗時)
-        df_prepared['strategy_name'] = strategy_name
-        df_prepared['trading_pair'] = df.get('Trading_Pair', df.get('trading_pair', ''))
-        df_prepared['date'] = df.get('Date', df.get('date', ''))  
-        df_prepared['rank_position'] = df.get('Rank', df.get('rank_position', 0))
-        
-        # 處理別名映射
-        if 'long_term_score' not in df_prepared.columns:
-            df_prepared['long_term_score'] = df_prepared.get('long_term_score_score', 
-                                                            df_prepared.get('all_ROI_Z_score', 0.0))
-        
-        if 'short_term_score' not in df_prepared.columns:
-            df_prepared['short_term_score'] = df_prepared.get('short_term_score_score', 
-                                                             df_prepared.get('short_ROI_z_score', 0.0))
-        
-        # 確保數值列存在並填充默認值
-        numeric_defaults = {
-            'final_ranking_score': 0.0,
-            'combined_roi_z_score': 0.0,
-            'final_combination_value': 0.0
-        }
-        
-        for col, default_val in numeric_defaults.items():
-            if col not in df_prepared.columns:
-                df_prepared[col] = default_val
-            else:
-                df_prepared[col] = pd.to_numeric(df_prepared[col], errors='coerce').fillna(default_val)
-        
-        # 確保字符串列類型正確
-        df_prepared['trading_pair'] = df_prepared['trading_pair'].astype(str)
-        df_prepared['date'] = df_prepared['date'].astype(str)
-        df_prepared['rank_position'] = pd.to_numeric(df_prepared['rank_position'], errors='coerce').fillna(0)
-        
-        print("✅ 列預處理完成")
-        
-        # ==================== 步驟2: NumPy向量化JSON處理 ====================
-        print("🚀 步驟2: NumPy向量化JSON處理...")
-        
-        # 識別score列 
-        score_columns = [col for col in df.columns 
-                        if col.endswith('_score') 
-                        and col not in ['final_ranking_score', 'long_term_score_score', 'short_term_score_score']]
-        
-        if score_columns:
-            # NumPy向量化處理 - 4.75x速度提升！
-            score_array = df[score_columns].values
-            print(f"   處理 {len(score_columns)} 個score列，數據形狀: {score_array.shape}")
             
-            # 高效批量JSON序列化
-            component_scores_list = [
-                json.dumps(dict(zip(score_columns, row.tolist()))) 
-                for row in score_array
-            ]
-            df_prepared['component_scores'] = component_scores_list
-        else:
-            df_prepared['component_scores'] = None
-            print("   無score列需要處理")
-        
-        print("✅ NumPy JSON處理完成")
-        
-        # ==================== 步驟3: 選擇最終列順序 ====================
-        final_columns = [
-            'strategy_name', 'trading_pair', 'date', 'final_ranking_score', 'rank_position',
-            'long_term_score', 'short_term_score', 'combined_roi_z_score', 
-            'final_combination_value', 'component_scores'
-        ]
-        
-        # 確保所有必需列都存在
-        for col in final_columns:
-            if col not in df_prepared.columns:
-                if col in ['long_term_score', 'short_term_score']:
-                    df_prepared[col] = 0.0
-                elif col == 'component_scores':
-                    df_prepared[col] = None
-                else:
-                    df_prepared[col] = '' if 'str' in str(type(col)) else 0
-        
-        df_final = df_prepared[final_columns]
-        
-        # ==================== 步驟4: SQLite極速插入優化 ====================
-        print("💾 步驟3: SQLite極速插入...")
-        
         with self.get_connection() as conn:
-            # 啟用SQLite高級性能優化
-            print("   啟用SQLite WAL模式和高級優化...")
-            conn.execute("PRAGMA journal_mode = WAL")
-            conn.execute("PRAGMA synchronous = NORMAL") 
-            conn.execute("PRAGMA cache_size = -128000")  # 128MB緩存
-            conn.execute("PRAGMA temp_store = MEMORY")
-            conn.execute("PRAGMA page_size = 4096")
-            conn.execute("PRAGMA wal_autocheckpoint = 1000")
+            data_to_insert = []
             
-            # 高效數據轉換 - 直接使用NumPy數組
-            print(f"   準備批量插入 {len(df_final)} 條記錄...")
-            insert_data = df_final.values.tolist()
+            for _, row in df.iterrows():
+                component_scores = {}
+                for col in df.columns:
+                    if col.endswith('_score') and col not in ['final_ranking_score', 'long_term_score_score', 'short_term_score_score']:
+                        component_scores[col] = row.get(col)
+                
+                data_to_insert.append((
+                    strategy_name,
+                    row.get('Trading_Pair', row.get('trading_pair')),
+                    row['Date'] if 'Date' in row else row.get('date'),
+                    row.get('final_ranking_score'),
+                    row.get('Rank', row.get('rank_position')),
+                    row.get('long_term_score_score', row.get('all_ROI_Z_score')),
+                    row.get('short_term_score_score', row.get('short_ROI_z_score')),
+                    row.get('combined_ROI_z_score'),
+                    row.get('final_combination_value'),
+                    json.dumps(component_scores) if component_scores else None
+                ))
             
-            # 單次批量插入 - 減少數據庫往返次數
             conn.executemany('''
                 INSERT OR REPLACE INTO strategy_ranking 
                 (strategy_name, trading_pair, date, final_ranking_score, rank_position,
                  long_term_score, short_term_score, combined_roi_z_score, 
                  final_combination_value, component_scores)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', insert_data)
+            ''', data_to_insert)
             
-            # 立即提交並WAL checkpoint
+            # 明確提交事務
             conn.commit()
-            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             
-        print("✅ SQLite極速插入完成")
-        print(f"🎉 極速優化完成！插入 {len(insert_data)} 條記錄 (策略: {strategy_name})")
-        
-        return len(insert_data)
+            print(f"✅ 插入策略排行榜數據 ({strategy_name}): {len(data_to_insert)} 條")
+            return len(data_to_insert)
     
     def get_strategy_ranking(self, strategy_name: str, date: str = None, top_n: int = None) -> pd.DataFrame:
         """查詢策略排行榜數據"""
@@ -659,9 +575,9 @@ class DatabaseManager(FundingRateDB):
                 (backtest_id, strategy_name, start_date, end_date, 
                  initial_capital, position_size, fee_rate, max_positions, 
                  entry_top_n, exit_threshold, final_balance, total_return, 
-                 roi, total_days, max_drawdown, win_rate, total_trades, profit_days, 
+                 max_drawdown, win_rate, total_trades, profit_days, 
                  loss_days, avg_holding_days, sharpe_ratio, config_params, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 backtest_id,
                 strategy_name,
@@ -675,8 +591,6 @@ class DatabaseManager(FundingRateDB):
                 config.get('exit_threshold'),
                 results.get('final_balance'),
                 results.get('total_return'),
-                results.get('roi'),
-                results.get('total_days'),
                 results.get('max_drawdown'),
                 results.get('win_rate'),
                 results.get('total_trades'),

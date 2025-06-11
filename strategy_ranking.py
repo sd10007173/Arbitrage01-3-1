@@ -417,13 +417,20 @@ def main():
     parser.add_argument('--all', action='store_true', help='處理所有可用日期')
     parser.add_argument('--strategy', help='指定策略名稱')
     parser.add_argument('--auto', action='store_true', help='自動模式 (不互動選擇)')
-    parser.add_argument('--incremental', action='store_true', help='增量模式 (只處理未完成的組合)')
+    parser.add_argument('--incremental', action='store_true', default=True, help='增量模式 (只處理未完成的組合，預設啟用)')
+    parser.add_argument('--no-incremental', action='store_true', help='停用增量模式 (強制重新處理所有數據)')
     
     args = parser.parse_args()
     
     print("\n" + "="*60)
     print("🎯 策略排行榜生成 (數據庫版)")
     print("="*60)
+    
+    # 顯示模式信息
+    if args.no_incremental:
+        print("🔄 模式: 完整重新處理 (增量模式已停用)")
+    else:
+        print("🔄 模式: 增量處理 (預設，跳過已完成組合)")
     
     # 確定要處理的策略
     selected_strategies = []
@@ -473,15 +480,19 @@ def main():
             print("  --all  (處理所有可用日期)")
             print("  --strategy 策略名稱  (指定特定策略)")
             print("  --auto  (自動模式，不互動選擇)")
-            print("  --incremental  (增量模式)")
+            print("  --incremental  (增量模式，預設啟用)")
+            print("  --no-incremental  (停用增量模式，重新處理所有數據)")
             return
     
     if not dates_to_process:
         print("❌ 沒有找到要處理的日期")
         return
     
+    # 檢查是否使用增量模式（預設啟用，除非明確停用）
+    use_incremental = args.incremental and not args.no_incremental
+    
     # 增量模式：過濾已處理的組合
-    if args.incremental:
+    if use_incremental:
         print("🔄 增量模式：檢查已處理的(日期, 策略)組合...")
         existing_combinations = check_existing_strategy_rankings()
         

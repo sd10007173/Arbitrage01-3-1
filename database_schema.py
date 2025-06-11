@@ -152,6 +152,8 @@ class FundingRateDB:
                 -- 回測結果
                 final_balance REAL,
                 total_return REAL,               -- 總收益率
+                roi REAL,                        -- 年化收益率 (ROI)
+                total_days INTEGER,              -- 回測總天數
                 max_drawdown REAL,               -- 最大回撤
                 win_rate REAL,                   -- 勝率
                 total_trades INTEGER,            -- 總交易次數

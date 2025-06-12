@@ -42,6 +42,7 @@ class FundingRateDB:
             self._create_backtest_trades_table(conn)
             self._create_market_caps_table(conn)
             self._create_trading_pairs_table(conn)
+            self._create_ranking_persistence_table(conn)
             
             # 創建索引
             self._create_indexes(conn)
@@ -245,6 +246,26 @@ class FundingRateDB:
                 UNIQUE(symbol, exchange_a, exchange_b) ON CONFLICT REPLACE
             )
         ''')
+
+    def _create_ranking_persistence_table(self, conn):
+        """創建排名持久性分析結果表"""
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS trading_pair_top_ranking_days (
+                event_id TEXT PRIMARY KEY,          -- 唯一事件ID, 格式: {strategy}_{trading_pair}_(n)
+                strategy TEXT NOT NULL,             -- 策略名稱
+                trading_pair TEXT NOT NULL,         -- 交易對名稱
+                entry_date DATE NOT NULL,           -- 首次進入前x名的日期
+                entry_rank INTEGER NOT NULL,        -- 進入時的排名
+                exit_date DATE,                     -- 跌出前y名的日期
+                exit_rank INTEGER,                  -- 離開時的排名 (可能為NULL)
+                consecutive_days INTEGER NOT NULL,  -- 連續在前y名內的天數
+                trigger_rank_x INTEGER NOT NULL,    -- 觸發分析的排名X
+                persistence_rank_y INTEGER NOT NULL,-- 持續性觀察的排名Y
+                parameters TEXT,                    -- 分析參數, e.g., "x=10, y=50"
+                cumulative_consecutive_days INTEGER, -- 該交易對的累計持續天數
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
     
     def _create_indexes(self, conn):
         """創建索引提升查詢性能"""
@@ -269,16 +290,22 @@ class FundingRateDB:
             "CREATE INDEX IF NOT EXISTS idx_strategy_ranking_strategy ON strategy_ranking(strategy_name)",
             "CREATE INDEX IF NOT EXISTS idx_strategy_ranking_strategy_date ON strategy_ranking(strategy_name, date)",
             "CREATE INDEX IF NOT EXISTS idx_strategy_ranking_rank ON strategy_ranking(rank_position)",
+            "CREATE INDEX IF NOT EXISTS idx_strategy_ranking_date_rank ON strategy_ranking (date, rank_position)",
             
             # 回測結果索引
             "CREATE INDEX IF NOT EXISTS idx_backtest_results_strategy ON backtest_results(strategy_name)",
             "CREATE INDEX IF NOT EXISTS idx_backtest_results_date_range ON backtest_results(start_date, end_date)",
             "CREATE INDEX IF NOT EXISTS idx_backtest_results_created ON backtest_results(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_backtest_results_strategy_date ON backtest_results (strategy_name, start_date, end_date)",
             
             # 回測交易索引
             "CREATE INDEX IF NOT EXISTS idx_backtest_trades_backtest_id ON backtest_trades(backtest_id)",
             "CREATE INDEX IF NOT EXISTS idx_backtest_trades_date ON backtest_trades(trade_date)",
             "CREATE INDEX IF NOT EXISTS idx_backtest_trades_pair ON backtest_trades(trading_pair)",
+            
+            # trading_pair_top_ranking_days 索引
+            "CREATE INDEX IF NOT EXISTS idx_ranking_persistence_strategy ON trading_pair_top_ranking_days (strategy)",
+            "CREATE INDEX IF NOT EXISTS idx_ranking_persistence_pair ON trading_pair_top_ranking_days (trading_pair)",
         ]
         
         for index_sql in indexes:

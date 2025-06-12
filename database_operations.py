@@ -1068,6 +1068,53 @@ class DatabaseManager(FundingRateDB):
             df = pd.DataFrame(result, columns=['symbol', 'exchange_a', 'exchange_b', 'diff_first_date'])
             return df
 
+    def clear_ranking_persistence_data(self, strategy: str):
+        """清除指定策略的排名持久性數據，以便重新計算"""
+        query = "DELETE FROM trading_pair_top_ranking_days WHERE strategy = ?"
+        with self.get_connection() as conn:
+            cursor = conn.execute(query, [strategy])
+            print(f"🧹 已清除策略 '{strategy}' 的舊有排名持久性數據: {cursor.rowcount} 條")
+
+    def insert_ranking_persistence_events(self, events: List[Dict[str, Any]]) -> int:
+        """
+        批量插入排名持久性事件數據
+        
+        Args:
+            events: 一個包含多個事件字典的列表
+        
+        Returns:
+            插入的記錄數量
+        """
+        if not events:
+            return 0
+            
+        data_to_insert = [
+            (
+                event['event_id'], event['strategy'], event['trading_pair'],
+                event['entry_date'], event['entry_rank'], event['exit_date'],
+                event['exit_rank'], event['consecutive_days'],
+                event['trigger_rank_x'], event['persistence_rank_y'],
+                event['parameters'],
+                event['cumulative_consecutive_days']
+            )
+            for event in events
+        ]
+        
+        query = '''
+            INSERT OR REPLACE INTO trading_pair_top_ranking_days 
+            (event_id, strategy, trading_pair, entry_date, entry_rank, exit_date, 
+             exit_rank, consecutive_days, trigger_rank_x, persistence_rank_y, 
+             parameters, cumulative_consecutive_days)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        '''
+        
+        with self.get_connection() as conn:
+            conn.executemany(query, data_to_insert)
+            conn.commit()
+            
+        print(f"✅ 成功插入 {len(data_to_insert)} 條排名持久性事件數據")
+        return len(data_to_insert)
+
 if __name__ == "__main__":
     # 測試數據庫操作
     db = DatabaseManager()

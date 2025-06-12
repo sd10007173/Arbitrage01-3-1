@@ -100,7 +100,7 @@ async def save_funding_rates(conn, df, exchange, symbol):
         return 0
 
 async def fetch_funding_rates_rest(session, exchange, symbol, trading_pair, start_dt, end_dt):
-    """使用 aiohttp 直接請求 REST API"""
+    """使用 aiohttp 直接請求 REST API，並加入重試機制"""
     all_data = []
     current_dt = start_dt
     
@@ -134,24 +134,32 @@ async def fetch_funding_rates_rest(session, exchange, symbol, trading_pair, star
                 "limit": 100
             }
         
-        try:
-            async with session.get(url, params=params, timeout=20) as response:
-                response.raise_for_status()
-                data = await response.json()
+        # --- 新增：重試邏輯 ---
+        retries = 3
+        for attempt in range(retries):
+            try:
+                async with session.get(url, params=params, timeout=20) as response:
+                    response.raise_for_status()
+                    data = await response.json()
 
-                if exchange == 'binance':
-                    all_data.extend(data)
-                elif exchange == 'bybit':
-                    if data.get("retCode") == 0 and data.get("result", {}).get("list"):
-                        all_data.extend(data["result"]["list"])
-                elif exchange == 'okx':
-                    if data.get("code") == "0":
-                         all_data.extend(data.get("data", []))
+                    if exchange == 'binance':
+                        all_data.extend(data)
+                    elif exchange == 'bybit':
+                        if data.get("retCode") == 0 and data.get("result", {}).get("list"):
+                            all_data.extend(data["result"]["list"])
+                    elif exchange == 'okx':
+                        if data.get("code") == "0":
+                             all_data.extend(data.get("data", []))
+                
+                break # 成功，跳出重試循環
 
-        except aiohttp.ClientError as e:
-            print(f"❌ ({exchange.upper()}) {symbol} {current_dt.strftime('%Y-%m-%d')} 請求錯誤: {e}")
-        except asyncio.TimeoutError:
-            print(f"❌ ({exchange.upper()}) {symbol} {current_dt.strftime('%Y-%m-%d')} 請求超時")
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                if attempt < retries - 1:
+                    print(f"🟡 ({exchange.upper()}) {symbol} 請求失敗 (第 {attempt + 1}/{retries} 次): {e}. 在 2 秒後重試...")
+                    await asyncio.sleep(2)
+                else:
+                    print(f"❌ ({exchange.upper()}) {symbol} {current_dt.strftime('%Y-%m-%d')} 請求錯誤: {e}")
+        # --- 重試邏輯結束 ---
 
         await asyncio.sleep(WAIT_TIME)
         current_dt = fetch_end
@@ -165,47 +173,72 @@ async def fetch_and_save_fr(session, task, start_date, end_date):
     exchange_id = task['exchange']
     trading_pair = task['trading_pair']
 
+    # 1. 確定基準開始日期 (使用者輸入 vs 上市日期)
     actual_start_date = start_date
     if task['list_date']:
         list_date_dt = datetime.fromisoformat(task['list_date']).replace(tzinfo=timezone.utc)
         actual_start_date = max(start_date, list_date_dt)
 
+    # 2. 增量更新檢查：查詢資料庫中最新的時間戳
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT MAX(timestamp_utc) FROM funding_rate_history WHERE symbol = ? AND exchange = ?",
+        (symbol, exchange_id)
+    )
+    latest_db_timestamp_str = cursor.fetchone()[0]
+    conn.close()
+
+    if latest_db_timestamp_str:
+        latest_db_date = datetime.fromisoformat(latest_db_timestamp_str).replace(tzinfo=timezone.utc)
+        # 我們從資料庫最新時間的下一個小時開始抓取
+        incremental_start_date = latest_db_date + timedelta(hours=1)
+        # 取兩者中較晚的日期作為真正的開始日期
+        actual_start_date = max(actual_start_date, incremental_start_date)
+
     if actual_start_date >= end_date:
-        print(f"🟡 ({exchange_id.upper()}) {symbol}: 上市日期晚於或等於請求區間，跳過。")
+        print(f"✅ ({exchange_id.upper()}) {symbol}: 數據已是最新，無需更新。")
         return
 
-    print(f"🚀 ({exchange_id.upper()}) 開始獲取 {symbol} 從 {actual_start_date.strftime('%Y-%m-%d')} 的數據...")
+    print(f"🚀 ({exchange_id.upper()}) 開始獲取 {symbol} 從 {actual_start_date.strftime('%Y-%m-%d %H:%M:%S')} 的數據...")
 
     api_rates = await fetch_funding_rates_rest(session, exchange_id, symbol, trading_pair, actual_start_date, end_date)
 
     # --- 新增邏輯：生成完整時間軸並合併 ---
-
-    # 1. 創建完整的小時時間軸
     # pd.date_range 的結尾是包含的，但我們的 end_date 是開區間，所以減去一小時
     hourly_index = pd.date_range(start=actual_start_date, end=end_date - timedelta(hours=1), freq='h', tz='UTC')
     
-    # 2. 將API返回的數據轉換為帶有時間索引的DataFrame
+    # 2. 將API返回的數據轉換為帶有時間索引的DataFrame，並對齊到整點小時
     api_df = None
     if api_rates:
         processed_rates = []
         for r in api_rates:
             try:
                 rate_record = {}
+                ts = None
                 if exchange_id == 'binance':
-                    rate_record['timestamp_utc'] = datetime.fromtimestamp(int(r['fundingTime']) / 1000, tz=timezone.utc)
+                    ts = datetime.fromtimestamp(int(r['fundingTime']) / 1000, tz=timezone.utc)
                     rate_record['funding_rate'] = float(r['fundingRate'])
                 elif exchange_id == 'bybit':
-                    rate_record['timestamp_utc'] = datetime.fromtimestamp(int(r['fundingRateTimestamp']) / 1000, tz=timezone.utc)
+                    ts = datetime.fromtimestamp(int(r['fundingRateTimestamp']) / 1000, tz=timezone.utc)
                     rate_record['funding_rate'] = float(r['fundingRate'])
                 elif exchange_id == 'okx':
-                    rate_record['timestamp_utc'] = datetime.fromtimestamp(int(r['fundingTime']) / 1000, tz=timezone.utc)
+                    ts = datetime.fromtimestamp(int(r['fundingTime']) / 1000, tz=timezone.utc)
                     rate_record['funding_rate'] = float(r['fundingRate'])
-                processed_rates.append(rate_record)
+                
+                if ts:
+                    # 核心修正：將時間戳向下對齊到最近的整點小時
+                    rate_record['timestamp_utc'] = ts.replace(minute=0, second=0, microsecond=0)
+                    processed_rates.append(rate_record)
+
             except (KeyError, ValueError) as e:
                 print(f"⚠️ ({exchange_id.upper()}) {symbol}: 解析API數據時跳過一筆記錄 - {e}")
         
         if processed_rates:
-            api_df = pd.DataFrame(processed_rates).set_index('timestamp_utc')
+            # 將 list of dicts 轉為 DataFrame
+            temp_df = pd.DataFrame(processed_rates)
+            # 處理同一小時內可能有多筆數據的情況，我們只保留最後一筆，確保數據的唯一性
+            api_df = temp_df.groupby('timestamp_utc').last()
 
     # 3. 以完整時間軸為基礎，合併API數據
     final_df = pd.DataFrame(index=hourly_index)
@@ -228,13 +261,24 @@ async def main():
     # 獲取用戶輸入
     print("--- 資金費率歷史數據獲取工具 V2 ---")
     
-    # 獲取交易所
-    exchanges_input = input("請輸入要查詢的交易所, 用空格分隔 (例如: binance bybit okx): ").strip().lower()
-    exchanges = [ex.strip() for ex in exchanges_input.split() if ex.strip()]
+    # 獲取交易所，並加入驗證
+    exchanges = []
     while not exchanges:
-        print("未輸入任何交易所，請重新輸入。")
         exchanges_input = input("請輸入要查詢的交易所, 用空格分隔 (例如: binance bybit okx): ").strip().lower()
-        exchanges = [ex.strip() for ex in exchanges_input.split() if ex.strip()]
+        input_list = [ex.strip() for ex in exchanges_input.split() if ex.strip()]
+        
+        if not input_list:
+            print("未輸入任何交易所，請重新輸入。")
+            continue
+
+        # 驗證所有輸入的交易所是否都有效
+        invalid_exchanges = [ex for ex in input_list if ex not in SUPPORTED_EXCHANGES]
+        
+        if invalid_exchanges:
+            print(f"❌ 錯誤：包含不支援或拼寫錯誤的交易所: {', '.join(invalid_exchanges)}")
+            print(f"   目前支援的交易所為: {', '.join(SUPPORTED_EXCHANGES)}")
+        else:
+            exchanges = input_list # 全部有效，賦值並結束循環
 
     # 獲取市值排名
     top_n = 0
@@ -270,7 +314,9 @@ async def main():
     
     # 解析並設定時區
     start_date = datetime.fromisoformat(start_date_str).replace(tzinfo=timezone.utc)
-    end_date = datetime.fromisoformat(end_date_str).replace(tzinfo=timezone.utc)
+    # 修正：將結束日期視為包含當天。例如，輸入 2025-06-11，則抓取到 2025-06-11 23:00:00 的數據
+    # 我們透過將日期加一天，並將其作為開區間的結束點來實現
+    end_date = datetime.fromisoformat(end_date_str).replace(tzinfo=timezone.utc) + timedelta(days=1)
     
     # 建立資料庫連線
     conn = get_connection()
@@ -281,18 +327,27 @@ async def main():
     conn.close()
     
     if not tasks:
-        print(f"未找到任何符合條件的任務，程式終止。")
+        print("未找到任何符合條件的任務，程式終止。")
         return
         
     print(f"找到 {len(tasks)} 個任務，準備開始獲取數據...")
 
+    # --- 新增：併發控制器 ---
+    # 設置一個Semaphore來限制同時運行的任務數量，例如10個
+    CONCURRENCY_LIMIT = 10
+    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+
+    async def run_with_semaphore(task_coro):
+        async with semaphore:
+            return await task_coro
+    # --- 結束 ---
+
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
-        fetch_tasks = [fetch_and_save_fr(session, task, start_date, end_date) for task in tasks]
+        fetch_tasks = [run_with_semaphore(fetch_and_save_fr(session, task, start_date, end_date)) for task in tasks]
         await asyncio.gather(*fetch_tasks)
 
     print("\n🎉 所有任務執行完畢！")
 
-if __name__ == '__main__':
-    # 移除 argparse，直接運行 main
+if __name__ == "__main__":
     asyncio.run(main())

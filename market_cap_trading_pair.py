@@ -2,6 +2,9 @@ import sqlite3
 import os
 from pycoingecko import CoinGeckoAPI
 from datetime import datetime
+import requests
+import time
+import math # 導入 math 模塊
 
 DB_PATH = "data/funding_rate.db"
 
@@ -11,17 +14,53 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def get_top_n_market_cap_coins(n):
-    """從 CoinGecko API 獲取市值排名前 n 的幣種數據"""
+def fetch_top_n_coins(n=200):
+    """
+    從 CoinGecko API 獲取市值排名前 N 的幣種數據，支持分頁。
+    """
     print(f"正在從 CoinGecko API 獲取市值排名前 {n} 的幣種數據...")
-    cg = CoinGeckoAPI()
-    try:
-        coins = cg.get_coins_markets(vs_currency='usd', per_page=n, page=1, order='market_cap_desc')
-        print(f"✅ 成功獲取 {len(coins)} 筆數據。")
-        return coins
-    except Exception as e:
-        print(f"❌ 從 CoinGecko API 獲取數據時發生錯誤: {e}")
-        return []
+    all_coins = []
+    per_page = 250  # CoinGecko API 每頁最多 250 筆
+    total_pages = math.ceil(n / per_page)
+    
+    for page in range(1, total_pages + 1):
+        remaining = n - len(all_coins)
+        current_per_page = min(per_page, remaining)
+        
+        if current_per_page <= 0:
+            break
+
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            'vs_currency': 'usd',
+            'order': 'market_cap_desc',
+            'per_page': current_per_page,
+            'page': page,
+            'sparkline': False
+        }
+        
+        try:
+            # 添加延遲以避免被 API 限制
+            if page > 1:
+                time.sleep(1) # 短暫延遲
+            
+            print(f"正在請求第 {page}/{total_pages} 頁，獲取 {current_per_page} 筆數據...")
+            response = requests.get(url, params=params)
+            response.raise_for_status()  # 如果請求失敗則拋出異常
+            data = response.json()
+
+            if not data:
+                print(f"✅ 第 {page} 頁無數據，查詢結束。")
+                break
+
+            all_coins.extend(data)
+            print(f"✅ 成功獲取 {len(data)} 筆數據。目前總數: {len(all_coins)}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ API 請求失敗: {e}")
+            return None # 返回 None 表示失敗
+    
+    return all_coins[:n] # 確保最終返回的數量不超過 N
 
 def clear_market_cap_data(conn):
     """清空所有現有交易對的市值相關數據"""
@@ -109,7 +148,7 @@ def main():
             print("無效的輸入，請輸入一個數字。")
 
     # 獲取 API 數據
-    coins_data = get_top_n_market_cap_coins(top_n)
+    coins_data = fetch_top_n_coins(top_n)
     
     if not coins_data:
         print("無法從 API 獲取數據，腳本終止。")

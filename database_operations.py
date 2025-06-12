@@ -951,6 +951,123 @@ class DatabaseManager(FundingRateDB):
                 'disk_space_saved': 'unknown'  # SQLite vacuum 不返回節省的空間信息
             }
 
+    def get_established_symbols(self, min_days: int = 3) -> List[str]:
+        """
+        獲取已上線超過指定天數的幣種列表
+        
+        Args:
+            min_days: 最少上線天數，默認3天
+            
+        Returns:
+            List[str]: 符合條件的幣種符號列表
+        """
+        with self.get_connection() as conn:
+            query = """
+            SELECT symbol
+            FROM (
+                SELECT 
+                    symbol,
+                    MIN(timestamp_utc) as first_appearance,
+                    JULIANDAY('now') - JULIANDAY(MIN(timestamp_utc)) as days_since_first_seen
+                FROM funding_rate_history 
+                GROUP BY symbol
+            ) as coin_history
+            WHERE days_since_first_seen >= ?
+            ORDER BY symbol
+            """
+            
+            result = conn.execute(query, [min_days]).fetchall()
+            return [row[0] for row in result]
+
+    def get_strategy_ranking_excluding_new_coins(self, strategy_name: str, date: str = None, 
+                                               top_n: int = None, min_days: int = 3) -> pd.DataFrame:
+        """
+        獲取策略排行榜，排除新上線的幣種
+        
+        Args:
+            strategy_name: 策略名稱
+            date: 查詢日期，None則查詢最新
+            top_n: 返回前N名
+            min_days: 排除上線少於N天的幣種
+            
+        Returns:
+            DataFrame: 過濾後的策略排行榜
+        """
+        # 獲取已確立的幣種列表
+        established_symbols = self.get_established_symbols(min_days)
+        
+        if not established_symbols:
+            print(f"⚠️ 沒有找到上線超過{min_days}天的幣種")
+            return pd.DataFrame()
+        
+        # 構建查詢條件，排除新幣
+        symbols_condition = "'" + "','".join(established_symbols) + "'"
+        
+        if date:
+            query = f"""
+            SELECT * FROM strategy_ranking 
+            WHERE strategy_name = ? AND date = ?
+            AND SUBSTR(trading_pair, 1, INSTR(trading_pair, '_')-1) IN ({symbols_condition})
+            ORDER BY rank_position
+            """
+            params = [strategy_name, date]
+        else:
+            # 查詢最新日期
+            query = f"""
+            SELECT * FROM strategy_ranking 
+            WHERE strategy_name = ? 
+            AND date = (SELECT MAX(date) FROM strategy_ranking WHERE strategy_name = ?)
+            AND SUBSTR(trading_pair, 1, INSTR(trading_pair, '_')-1) IN ({symbols_condition})
+            ORDER BY rank_position
+            """
+            params = [strategy_name, strategy_name]
+        
+        if top_n:
+            query += f" LIMIT {top_n}"
+        
+        df = pd.read_sql_query(query, self.get_connection(), params=params)
+        
+        if not df.empty:
+            excluded_count = len(self.get_strategy_ranking(strategy_name, date, None)) - len(df)
+            print(f"✅ 已過濾掉 {excluded_count} 個新上線幣種 (少於{min_days}天)")
+        
+        return df
+
+    def update_trading_pair_diff_first_date(self, symbol: str, exchange_a: str, exchange_b: str, diff_first_date: str):
+        """更新交易對的首次資金費率差時間"""
+        
+        query = """
+        UPDATE trading_pairs 
+        SET diff_first_date = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE symbol = ? AND exchange_a = ? AND exchange_b = ?
+        """
+        
+        with self.get_connection() as conn:
+            conn.execute(query, [diff_first_date, symbol, exchange_a, exchange_b])
+
+    def get_trading_pairs_with_min_diff_days(self, min_days: int = 3) -> pd.DataFrame:
+        """
+        獲取首次資金費率差出現超過指定天數的交易對
+        
+        Args:
+            min_days: 最少天數
+            
+        Returns:
+            DataFrame: 符合條件的交易對
+        """
+        query = """
+        SELECT symbol, exchange_a, exchange_b, diff_first_date
+        FROM trading_pairs
+        WHERE diff_first_date IS NOT NULL
+        AND JULIANDAY('now') - JULIANDAY(diff_first_date) >= ?
+        ORDER BY diff_first_date
+        """
+        
+        with self.get_connection() as conn:
+            result = conn.execute(query, [min_days]).fetchall()
+            df = pd.DataFrame(result, columns=['symbol', 'exchange_a', 'exchange_b', 'diff_first_date'])
+            return df
+
 if __name__ == "__main__":
     # 測試數據庫操作
     db = DatabaseManager()

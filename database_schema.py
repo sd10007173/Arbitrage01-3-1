@@ -239,6 +239,7 @@ class FundingRateDB:
                 exchange_b TEXT NOT NULL,
                 market_cap REAL,
                 fr_date TEXT,                    -- 最後更新的資金費率日期
+                diff_first_date TEXT,            -- 首次出現資金費率差的日期 (YYYY-MM-DD HH:MM:SS)
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(symbol, exchange_a, exchange_b) ON CONFLICT REPLACE

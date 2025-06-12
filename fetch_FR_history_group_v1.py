@@ -29,8 +29,8 @@ os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 # --------------------------------------
 # 3. 查詢參數預設值
 # --------------------------------------
-DEFAULT_START_DATE = "2024-01-01"  # 起始日期 (UTC, 格式 YYYY-MM-DD)
-DEFAULT_END_DATE = "2024-01-10"  # 結束日期 (UTC, 格式 YYYY-MM-DD)
+DEFAULT_START_DATE = "2025-06-06"  # 起始日期 (UTC, 格式 YYYY-MM-DD)
+DEFAULT_END_DATE = "2025-06-10"  # 結束日期 (UTC, 格式 YYYY-MM-DD)
 TOP_N = 500  # 取前 TOP_N 筆市值排名交易對
 SELECTED_EXCHANGES = ["binance", "bybit"]  # 選擇要查詢的交易所
 

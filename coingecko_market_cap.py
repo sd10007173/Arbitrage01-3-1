@@ -25,13 +25,14 @@ def get_user_input():
             print("❌ 請輸入有效的數字")
 
 
-def get_market_caps_from_coingecko(page=1, per_page=250):
+def get_market_caps_from_coingecko(page=1, per_page=250, max_retries=3):
     """
     從 CoinGecko API 獲取加密貨幣市值資料
     
     Args:
         page: 頁數，從 1 開始
         per_page: 每頁資料數量，最大 250
+        max_retries: 最大重試次數
     
     Returns:
         list: 包含市值資料的列表
@@ -45,22 +46,38 @@ def get_market_caps_from_coingecko(page=1, per_page=250):
         'sparkline': 'false'
     }
     
-    try:
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        # 將 symbol 轉為大寫，便於後續處理
-        for item in data:
-            item['symbol'] = item['symbol'].upper()
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, params=params, timeout=15)
+            response.raise_for_status()
+            data = response.json()
             
-        return data
-    except requests.RequestException as e:
-        print(f"❌ API 請求失敗: {e}")
-        return []
-    except Exception as e:
-        print(f"❌ 處理資料時發生錯誤: {e}")
-        return []
+            # 將 symbol 轉為大寫，便於後續處理
+            for item in data:
+                item['symbol'] = item['symbol'].upper()
+                
+            return data
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:  # Too Many Requests
+                wait_time = (attempt + 1) * 3  # 遞增等待時間：3, 6, 9 秒
+                print(f"⚠️ API 限制觸發，等待 {wait_time} 秒後重試... (嘗試 {attempt + 1}/{max_retries})")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"❌ HTTP 錯誤: {e}")
+                return []
+        except requests.RequestException as e:
+            print(f"❌ API 請求失敗: {e}")
+            if attempt < max_retries - 1:
+                print(f"⚠️ 3 秒後重試... (嘗試 {attempt + 1}/{max_retries})")
+                time.sleep(3)
+                continue
+            return []
+        except Exception as e:
+            print(f"❌ 處理資料時發生錯誤: {e}")
+            return []
+    
+    return []
 
 
 def save_market_caps_to_database(all_data, count):
@@ -95,10 +112,16 @@ def main():
     print("=" * 50)
     
     try:
-        target_count = int(input("請輸入要取得的市值排名前幾名（建議 3-250）: "))
-        if target_count <= 0 or target_count > 250:
-            print("❌ 請輸入 1-250 之間的數字")
+        target_count = int(input("請輸入要取得的市值排名前幾名（建議 50-1000）: "))
+        if target_count <= 0:
+            print("❌ 請輸入大於 0 的正整數")
             return
+        if target_count > 10000:
+            print("⚠️ 數量過大，建議不超過 10000，繼續執行可能會很慢...")
+            confirm = input("是否繼續執行？(y/N): ")
+            if confirm.lower() != 'y':
+                print("❌ 已取消執行")
+                return
     except ValueError:
         print("❌ 請輸入有效的數字")
         return
@@ -108,6 +131,9 @@ def main():
     # 計算需要幾頁
     per_page = 250
     pages_needed = (target_count + per_page - 1) // per_page
+    
+    if pages_needed > 1:
+        print(f"📄 需要獲取 {pages_needed} 頁資料，預計耗時約 {pages_needed * 2} 秒")
     
     all_market_caps_data = []
     
@@ -122,9 +148,11 @@ def main():
             print(f"❌ 第 {page} 頁獲取失敗")
             break
         
-        # API 限制：避免請求過快
+        # API 限制：避免請求過快，增加延遲避免 429 錯誤
         if page < pages_needed:
-            time.sleep(1)
+            delay = 2 if target_count > 1000 else 1.5
+            print(f"⏱️ 等待 {delay} 秒避免 API 限制...")
+            time.sleep(delay)
     
     if all_market_caps_data:
         print(f"✅ 總共獲取 {len(all_market_caps_data)} 筆市值資料")

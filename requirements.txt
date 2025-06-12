@@ -3,4 +3,7 @@ numpy>=1.21.0
 requests>=2.25.0
 matplotlib>=3.3.0
 glob2
-datetime 
+pycoingecko
+ccxt
+db-sqlite3
+certifi 

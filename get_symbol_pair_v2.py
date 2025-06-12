@@ -147,7 +147,7 @@ def generate_trading_pairs(market_caps):
                 base_symbol = extract_base_symbol(symbol)
                 market_cap = market_caps.get(base_symbol, 0)
                 
-                pair_data.append({
+            pair_data.append({
                     'Symbol': symbol,
                     'Exchange_A': exchange_a,
                     'Exchange_B': exchange_b,

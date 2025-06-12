@@ -447,14 +447,19 @@ class FundingRateBacktest:
         self.end_date = datetime.strptime(end_date, '%Y-%m-%d')
         self.backtest_days = (self.end_date - self.start_date).days + 1
 
-    def plot_equity_curve(self, output_dir):
+    def plot_equity_curve(self, output_dir="data/picture/backtest"):
         """
-        繪製淨值曲線圖
-        :param output_dir: 輸出目錄
+        繪製淨值曲線圖，參考用戶提供的樣式
+        :param output_dir: 輸出目錄，默認為 data/picture/backtest
         """
         if not self.equity_curve_data:
             print("警告: 沒有淨值曲線數據可繪製")
             return None
+
+        # 確保輸出目錄存在
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            print(f"✅ 創建輸出目錄: {output_dir}")
 
         # 準備數據
         df = pd.DataFrame(self.equity_curve_data)
@@ -464,47 +469,52 @@ class FundingRateBacktest:
         # 計算報酬率
         df['returns'] = (df['total_balance'] - self.initial_capital) / self.initial_capital * 100
 
-        # 創建圖表
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+        # 創建圖表，使用與用戶提供樣式一致的設計
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
 
-        # 上圖：淨值曲線
-        ax1.plot(df['date'], df['total_balance'], linewidth=2, color='#2E86AB', label='總餘額')
-        ax1.axhline(y=self.initial_capital, color='red', linestyle='--', alpha=0.7,
+        # 上圖：淨值曲線 - 參考用戶樣式
+        ax1.plot(df['date'], df['total_balance'], linewidth=2, color='#1f77b4', label='總餘額')
+        ax1.axhline(y=self.initial_capital, color='red', linestyle='--', alpha=0.8,
                     label=f'初始資金 ${self.initial_capital:,}')
-        ax1.set_title(f'淨值曲線 - {self.strategy_name}', fontsize=16, fontweight='bold', pad=20)
+        ax1.set_title(f'淨值曲線 - {self.strategy_name}', fontsize=14, fontweight='bold', pad=20)
         ax1.set_ylabel('總餘額 ($)', fontsize=12)
         ax1.grid(True, alpha=0.3)
         ax1.legend()
 
-        # 格式化Y軸
+        # 格式化Y軸 - 使用美元格式
         ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
 
-        # 下圖：報酬率曲線
-        ax2.plot(df['date'], df['returns'], linewidth=2, color='#A23B72', label='累計報酬率')
-        ax2.axhline(y=0, color='red', linestyle='--', alpha=0.7, label='損益平衡線')
-        ax2.set_title(f'累計報酬率 - {self.strategy_name}', fontsize=16, fontweight='bold', pad=20)
+        # 下圖：累計報酬率 - 參考用戶樣式
+        ax2.plot(df['date'], df['returns'], linewidth=2, color='#d62728', label='累計報酬率')
+        ax2.axhline(y=0, color='red', linestyle='--', alpha=0.8, label='損益平衡線')
+        ax2.set_title(f'累計報酬率 - {self.strategy_name}', fontsize=14, fontweight='bold', pad=20)
         ax2.set_xlabel('日期', fontsize=12)
         ax2.set_ylabel('報酬率 (%)', fontsize=12)
         ax2.grid(True, alpha=0.3)
         ax2.legend()
 
-        # 格式化日期軸
+        # 格式化日期軸 - 使用月份間隔
         for ax in [ax1, ax2]:
-            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
             plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
 
         # 調整布局
         plt.tight_layout()
 
-        # 生成唯一檔案名稱（包含策略名稱）
-        chart_path, chart_filename = self.get_unique_filename(output_dir, 'equity_curve', 'png', self.strategy_name)
+        # 生成檔案名稱 - 使用更簡潔的命名格式
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        start_date_str = self.start_date.strftime('%Y-%m-%d') if hasattr(self.start_date, 'strftime') else str(self.start_date).split()[0]
+        end_date_str = self.end_date.strftime('%Y-%m-%d') if hasattr(self.end_date, 'strftime') else str(self.end_date).split()[0]
+        filename = f"equity_curve_{self.strategy_name}_{start_date_str}_{end_date_str}_{timestamp}.png"
+        chart_path = os.path.join(output_dir, filename)
 
         # 保存圖表
-        plt.savefig(chart_path, dpi=300, bbox_inches='tight')
+        plt.savefig(chart_path, dpi=300, bbox_inches='tight', 
+                   facecolor='white', edgecolor='none')
         plt.close()
 
-        print(f"淨值曲線圖已保存: {chart_path}")
+        print(f"✅ 淨值曲線圖已保存: {chart_path}")
         return chart_path
 
     def load_strategy_ranking_data(self, strategy_name, start_date, end_date):
@@ -964,7 +974,7 @@ class FundingRateBacktest:
 最終資金: ${final_capital:,.2f}
 總報酬: ${total_return:,.2f}
 總報酬率: {total_roi:.2%}
-年化報酬率: {annualized_roi:.2%}
+年化報酬率: {roi:.2%}
 最高資金: ${self.max_balance:,.2f}
 最大回撤: {self.max_drawdown:.2%}
 
@@ -993,6 +1003,14 @@ class FundingRateBacktest:
 ✅ 淨值曲線已保存到數據庫
 📊 數據庫ID: {self.backtest_id}
 """
+        
+        # 生成淨值曲線圖
+        try:
+            chart_path = self.plot_equity_curve()
+            if chart_path:
+                print(f"📈 淨值曲線圖已生成: {chart_path}")
+        except Exception as e:
+            print(f"⚠️ 生成淨值曲線圖時出錯: {e}")
         
         print("✅ 數據庫報告生成完成!")
         print(summary_text)

@@ -463,130 +463,87 @@ class DatabaseManager(FundingRateDB):
     # ==================== 策略排行榜數據操作 ====================
     
     def insert_strategy_ranking(self, df: pd.DataFrame, strategy_name: str) -> int:
-        """插入策略排行榜數據 - NumPy + SQLite 極速優化版本"""
+        """
+        將策略排行榜批量保存到數據庫 (高性能版本)
+        
+        Args:
+            df (pd.DataFrame): 包含多天、多交易對排名的DataFrame
+            strategy_name (str): 策略名稱
+        
+        Returns:
+            int: 成功插入的記錄數
+        """
         if df.empty:
+            print("⚠️ 傳入的 DataFrame 為空，跳過插入。")
             return 0
-        
-        print(f"⚡ NumPy極速處理策略排行榜: {len(df)} 條記錄 (策略: {strategy_name})")
-        
-        # ==================== 步驟1: 列預處理映射優化 ====================
-        print("📊 步驟1: 向量化列預處理...")
-        df_prepared = df.copy()
-        
-        # 一次性向量化列映射，消除重複row.get()調用 (節省13.6%耗時)
-        df_prepared['strategy_name'] = strategy_name
-        df_prepared['trading_pair'] = df.get('Trading_Pair', df.get('trading_pair', ''))
-        df_prepared['date'] = df.get('Date', df.get('date', ''))  
-        df_prepared['rank_position'] = df.get('Rank', df.get('rank_position', 0))
-        
-        # 處理別名映射
-        if 'long_term_score' not in df_prepared.columns:
-            df_prepared['long_term_score'] = df_prepared.get('long_term_score_score', 
-                                                            df_prepared.get('all_ROI_Z_score', 0.0))
-        
-        if 'short_term_score' not in df_prepared.columns:
-            df_prepared['short_term_score'] = df_prepared.get('short_term_score_score', 
-                                                             df_prepared.get('short_ROI_z_score', 0.0))
-        
-        # 確保數值列存在並填充默認值
-        numeric_defaults = {
-            'final_ranking_score': 0.0,
-            'combined_roi_z_score': 0.0,
-            'final_combination_value': 0.0
-        }
-        
-        for col, default_val in numeric_defaults.items():
-            if col not in df_prepared.columns:
-                df_prepared[col] = default_val
-            else:
-                df_prepared[col] = pd.to_numeric(df_prepared[col], errors='coerce').fillna(default_val)
-        
-        # 確保字符串列類型正確
-        df_prepared['trading_pair'] = df_prepared['trading_pair'].astype(str)
-        df_prepared['date'] = df_prepared['date'].astype(str)
-        df_prepared['rank_position'] = pd.to_numeric(df_prepared['rank_position'], errors='coerce').fillna(0)
-        
-        print("✅ 列預處理完成")
-        
-        # ==================== 步驟2: NumPy向量化JSON處理 ====================
-        print("🚀 步驟2: NumPy向量化JSON處理...")
-        
-        # 識別score列 
-        score_columns = [col for col in df.columns 
-                        if col.endswith('_score') 
-                        and col not in ['final_ranking_score', 'long_term_score_score', 'short_term_score_score']]
-        
-        if score_columns:
-            # NumPy向量化處理 - 4.75x速度提升！
-            score_array = df[score_columns].values
-            print(f"   處理 {len(score_columns)} 個score列，數據形狀: {score_array.shape}")
             
-            # 高效批量JSON序列化
-            component_scores_list = [
-                json.dumps(dict(zip(score_columns, row.tolist()))) 
-                for row in score_array
-            ]
-            df_prepared['component_scores'] = component_scores_list
-        else:
-            df_prepared['component_scores'] = None
-            print("   無score列需要處理")
-        
-        print("✅ NumPy JSON處理完成")
-        
-        # ==================== 步驟3: 選擇最終列順序 ====================
-        final_columns = [
-            'strategy_name', 'trading_pair', 'date', 'final_ranking_score', 'rank_position',
-            'long_term_score', 'short_term_score', 'combined_roi_z_score', 
-            'final_combination_value', 'component_scores'
-        ]
-        
-        # 確保所有必需列都存在
-        for col in final_columns:
-            if col not in df_prepared.columns:
-                if col in ['long_term_score', 'short_term_score']:
-                    df_prepared[col] = 0.0
-                elif col == 'component_scores':
-                    df_prepared[col] = None
-                else:
-                    df_prepared[col] = '' if 'str' in str(type(col)) else 0
-        
-        df_final = df_prepared[final_columns]
-        
-        # ==================== 步驟4: SQLite極速插入優化 ====================
-        print("💾 步驟3: SQLite極速插入...")
+        print(f"🚀 開始為策略 '{strategy_name}' 批量插入排行榜數據...")
         
         with self.get_connection() as conn:
-            # 啟用SQLite高級性能優化
-            print("   啟用SQLite WAL模式和高級優化...")
-            conn.execute("PRAGMA journal_mode = WAL")
-            conn.execute("PRAGMA synchronous = NORMAL") 
-            conn.execute("PRAGMA cache_size = -128000")  # 128MB緩存
-            conn.execute("PRAGMA temp_store = MEMORY")
-            conn.execute("PRAGMA page_size = 4096")
-            conn.execute("PRAGMA wal_autocheckpoint = 1000")
+            cursor = conn.cursor()
             
-            # 高效數據轉換 - 直接使用NumPy數組
-            print(f"   準備批量插入 {len(df_final)} 條記錄...")
-            insert_data = df_final.values.tolist()
+            # --- 1. 刪除該策略在本次處理日期範圍內的舊數據 ---
+            # 獲取本次處理的日期範圍
+            min_date = df['date'].min()
+            max_date = df['date'].max()
             
-            # 單次批量插入 - 減少數據庫往返次數
-            conn.executemany('''
-                INSERT OR REPLACE INTO strategy_ranking 
-                (strategy_name, trading_pair, date, final_ranking_score, rank_position,
-                 long_term_score, short_term_score, combined_roi_z_score, 
-                 final_combination_value, component_scores)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', insert_data)
+            print(f"   - 正在刪除 {strategy_name} 在 {min_date} 到 {max_date} 的舊排名...")
             
-            # 立即提交並WAL checkpoint
-            conn.commit()
-            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            delete_query = "DELETE FROM strategy_ranking WHERE strategy_name = ? AND date BETWEEN ? AND ?"
+            cursor.execute(delete_query, (strategy_name, min_date, max_date))
             
-        print("✅ SQLite極速插入完成")
-        print(f"🎉 極速優化完成！插入 {len(insert_data)} 條記錄 (策略: {strategy_name})")
-        
-        return len(insert_data)
-    
+            deleted_count = cursor.rowcount
+            if deleted_count > 0:
+                print(f"   - 成功刪除 {deleted_count} 條舊記錄。")
+
+            # --- 2. 高效準備要插入的數據 ---
+            # 創建副本以避免修改原始DataFrame
+            db_df = df.copy()
+            
+            # 添加/確保 strategy_name 列存在
+            db_df['strategy_name'] = strategy_name
+            
+            # 確保 'date' 列是 YYYY-MM-DD 格式的字符串
+            if pd.api.types.is_datetime64_any_dtype(db_df['date']):
+                db_df['date'] = db_df['date'].dt.strftime('%Y-%m-%d')
+            
+            # 選擇並排序數據庫表格對應的列
+            required_columns = [
+                'strategy_name', 'trading_pair', 'date', 
+                'final_ranking_score', 'rank_position'
+            ]
+            
+            # 檢查所有必需的列是否存在
+            missing_cols = [col for col in required_columns if col not in db_df.columns]
+            if missing_cols:
+                print(f"❌ DataFrame 中缺少必需的列: {', '.join(missing_cols)}")
+                return 0
+            
+            # 準備最終要插入的數據
+            data_to_insert = db_df[required_columns]
+
+            # --- 3. 執行高效的批量插入 ---
+            print(f"   - 準備插入 {len(data_to_insert)} 條新記錄...")
+            try:
+                # 使用 to_records(index=False).tolist()，這是最快的方式之一
+                records = data_to_insert.to_records(index=False).tolist()
+                
+                # 使用 executemany 進行批量插入
+                insert_query = f"INSERT INTO strategy_ranking ({', '.join(required_columns)}) VALUES (?, ?, ?, ?, ?)"
+                cursor.executemany(insert_query, records)
+                
+                # 提交事務
+                conn.commit()
+                
+                inserted_count = cursor.rowcount
+                print(f"✅ 成功為策略 '{strategy_name}' 插入 {inserted_count} 條排名記錄。")
+                return inserted_count
+                
+            except Exception as e:
+                print(f"❌ 批量插入數據時發生錯誤: {e}")
+                conn.rollback()  # 如果出錯則回滾
+                return 0
+
     def get_strategy_ranking(self, strategy_name: str, date: str = None, top_n: int = None) -> pd.DataFrame:
         """查詢策略排行榜數據"""
         query = "SELECT * FROM strategy_ranking WHERE strategy_name = ?"
@@ -603,6 +560,26 @@ class DatabaseManager(FundingRateDB):
         
         return pd.read_sql_query(query, self.get_connection(), params=params)
     
+    def get_return_metrics_date_range(self) -> (Optional[str], Optional[str]):
+        """
+        從 return_metrics 表中查詢最早和最晚的日期
+        
+        Returns:
+            (min_date, max_date) 元組, 如果沒有數據則返回 (None, None)
+        """
+        query = "SELECT MIN(date) as min_date, MAX(date) as max_date FROM return_metrics"
+        try:
+            with self.get_connection() as conn:
+                result = conn.execute(query).fetchone()
+            
+            if result and result['min_date'] and result['max_date']:
+                return result['min_date'], result['max_date']
+            else:
+                return None, None
+        except Exception as e:
+            print(f"❌ 查詢 return_metrics 日期範圍時出錯: {e}")
+            return None, None
+
     def get_latest_ranking(self, strategy_name: str, top_n: int = 10) -> pd.DataFrame:
         """獲取最新的策略排行榜"""
         query = """

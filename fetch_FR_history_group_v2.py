@@ -7,6 +7,12 @@ import ssl
 import certifi
 import pandas as pd
 
+# --- 全局配置 ---
+# 將並發限制從 10 調降到 5，以避免觸發幣安的速率限制
+SEMAPHORE_LIMIT = 5  # 同時運行的最大異步任務數
+MAX_RETRIES = 3      # API請求失敗時的最大重試次數
+RETRY_DELAY = 5      # 重試前的延遲秒數 (從2秒增加到5秒，給伺服器更多喘息時間)
+
 # --- 新增：處理 Python 3.12 的 sqlite3 日期時間 DeprecationWarning ---
 # 1. 定義一個新的 adapter，將 python datetime 物件轉換為 ISO 8601 字串
 def adapt_datetime_iso(val):
@@ -135,8 +141,7 @@ async def fetch_funding_rates_rest(session, exchange, symbol, trading_pair, star
             }
         
         # --- 新增：重試邏輯 ---
-        retries = 3
-        for attempt in range(retries):
+        for attempt in range(MAX_RETRIES):
             try:
                 async with session.get(url, params=params, timeout=20) as response:
                     response.raise_for_status()
@@ -154,9 +159,9 @@ async def fetch_funding_rates_rest(session, exchange, symbol, trading_pair, star
                 break # 成功，跳出重試循環
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                if attempt < retries - 1:
-                    print(f"🟡 ({exchange.upper()}) {symbol} 請求失敗 (第 {attempt + 1}/{retries} 次): {e}. 在 2 秒後重試...")
-                    await asyncio.sleep(2)
+                if attempt < MAX_RETRIES - 1:
+                    print(f"🟡 ({exchange.upper()}) {symbol} 請求失敗 (第 {attempt + 1}/{MAX_RETRIES} 次): {e}. 在 {RETRY_DELAY} 秒後重試...")
+                    await asyncio.sleep(RETRY_DELAY)
                 else:
                     print(f"❌ ({exchange.upper()}) {symbol} {current_dt.strftime('%Y-%m-%d')} 請求錯誤: {e}")
         # --- 重試邏輯結束 ---
@@ -333,9 +338,8 @@ async def main():
     print(f"找到 {len(tasks)} 個任務，準備開始獲取數據...")
 
     # --- 新增：併發控制器 ---
-    # 設置一個Semaphore來限制同時運行的任務數量，例如10個
-    CONCURRENCY_LIMIT = 10
-    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+    # 設置一個Semaphore來限制同時運行的任務數量
+    semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
 
     async def run_with_semaphore(task_coro):
         async with semaphore:

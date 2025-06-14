@@ -139,13 +139,15 @@ def check_volume_and_get_listing_date(exchange, symbol_slash, exchange_name):
             listing_date = get_bybit_launch_time(exchange, symbol_slash)
             
         elif exchange_name == 'binance':
-            # binance: 使用第一筆 OHLC 邏輯 (已經正確)
-            print(f"    🎯 使用 binance 第一筆 OHLC 邏輯")
+            # binance: 使用第一筆 OHLC 邏輯 (V6正確邏輯)
+            print(f"    🎯 使用 binance 第一筆 OHLC 邏輯 (V6正確版本)")
             try:
                 early_ohlcv = exchange.fetch_ohlcv(symbol_slash, '1d', since=exchange.parse8601('2015-01-01T00:00:00Z'), limit=1)
                 if early_ohlcv:
                     listing_date = datetime.fromtimestamp(early_ohlcv[0][0] / 1000)
                     print(f"    ✅ binance 首次上市日期: {listing_date.date()}")
+                    # V6邏輯：直接返回第一筆OHLC日期，不再做成交量掃描
+                    return True, listing_date
             except Exception as e:
                 print(f"    ⚠️ binance OHLC 查詢失敗: {e}")
                 
@@ -239,7 +241,7 @@ def main():
     for ex_name in exchanges_to_check:
         try:
             if ex_name == 'binance':
-                exchange_instance = ccxt.binance()
+                exchange_instance = ccxt.binance({'options': {'defaultType': 'future'}})
             elif ex_name == 'bybit':
                 exchange_instance = ccxt.bybit({'options': {'defaultType': 'swap'}})
             elif ex_name == 'okx':

@@ -180,26 +180,55 @@ async def fetch_and_save_fr(session, task, start_date, end_date):
 
     # 1. 確定基準開始日期 (使用者輸入 vs 上市日期)
     actual_start_date = start_date
+    list_date_dt = None
     if task['list_date']:
         list_date_dt = datetime.fromisoformat(task['list_date']).replace(tzinfo=timezone.utc)
         actual_start_date = max(start_date, list_date_dt)
+        
+        # 如果上市日期晚於用戶指定的結束日期，直接跳過
+        if list_date_dt >= end_date:
+            print(f"ℹ️ ({exchange_id.upper()}) {symbol}: 上市日期 ({list_date_dt.date()}) 晚於指定結束日期 ({(end_date - timedelta(days=1)).date()})，跳過。")
+            return
 
-    # 2. 增量更新檢查：查詢資料庫中最新的時間戳
+    # 2. 智慧增量更新檢查：檢查用戶指定時間範圍內的數據完整性
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT MAX(timestamp_utc) FROM funding_rate_history WHERE symbol = ? AND exchange = ?",
-        (symbol, exchange_id)
-    )
-    latest_db_timestamp_str = cursor.fetchone()[0]
+    
+    # 檢查用戶指定時間範圍內是否有完整數據
+    cursor.execute("""
+        SELECT COUNT(DISTINCT DATE(timestamp_utc)) as existing_days
+        FROM funding_rate_history 
+        WHERE symbol = ? AND exchange = ? 
+        AND DATE(timestamp_utc) BETWEEN DATE(?) AND DATE(?)
+    """, (symbol, exchange_id, actual_start_date.date(), (end_date - timedelta(days=1)).date()))
+    
+    existing_days = cursor.fetchone()[0]
+    expected_days = (end_date.date() - actual_start_date.date()).days
+    
+    # 如果指定時間範圍內的數據已經完整，則跳過
+    if existing_days >= expected_days and expected_days > 0:
+        print(f"✅ ({exchange_id.upper()}) {symbol}: 指定時間範圍 ({actual_start_date.date()} 到 {(end_date - timedelta(days=1)).date()}) 數據已完整，無需更新。")
+        conn.close()
+        return
+    
+    # 找到需要補充的時間範圍
+    if existing_days > 0:
+        # 找到資料庫中該時間範圍內的最新時間戳
+        cursor.execute("""
+            SELECT MAX(timestamp_utc) 
+            FROM funding_rate_history 
+            WHERE symbol = ? AND exchange = ? 
+            AND DATE(timestamp_utc) BETWEEN DATE(?) AND DATE(?)
+        """, (symbol, exchange_id, actual_start_date.date(), (end_date - timedelta(days=1)).date()))
+        
+        latest_in_range = cursor.fetchone()[0]
+        if latest_in_range:
+            latest_db_date = datetime.fromisoformat(latest_in_range).replace(tzinfo=timezone.utc)
+            # 從最新時間的下一個小時開始抓取
+            incremental_start_date = latest_db_date + timedelta(hours=1)
+            actual_start_date = max(actual_start_date, incremental_start_date)
+    
     conn.close()
-
-    if latest_db_timestamp_str:
-        latest_db_date = datetime.fromisoformat(latest_db_timestamp_str).replace(tzinfo=timezone.utc)
-        # 我們從資料庫最新時間的下一個小時開始抓取
-        incremental_start_date = latest_db_date + timedelta(hours=1)
-        # 取兩者中較晚的日期作為真正的開始日期
-        actual_start_date = max(actual_start_date, incremental_start_date)
 
     if actual_start_date >= end_date:
         print(f"✅ ({exchange_id.upper()}) {symbol}: 數據已是最新，無需更新。")

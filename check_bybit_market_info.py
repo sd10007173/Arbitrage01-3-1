@@ -1,7 +1,50 @@
 #!/usr/bin/env python3
-import ccxt
+import ccxt.async_support as ccxt
+import asyncio
 import json
 from datetime import datetime
+
+async def check_symbol_type(exchange_id, symbol):
+    """
+    Checks the type of a specific symbol on an exchange (e.g., spot, linear).
+    """
+    exchange_class = getattr(ccxt, exchange_id)
+    exchange = exchange_class()
+    
+    try:
+        await exchange.load_markets()
+        
+        if symbol in exchange.markets:
+            market_info = exchange.markets[symbol]
+            market_type = market_info.get('type', 'N/A')
+            
+            print(f"--- Symbol Information for {symbol} on {exchange_id.capitalize()} ---")
+            print(f"Symbol: {market_info.get('symbol', 'N/A')}")
+            print(f"Type: {market_type}")
+            print(f"Active: {market_info.get('active', 'N/A')}")
+            
+            if market_type != 'linear':
+                print("\n結論：這不是一個線性永續合約，因此不會有資金費率（Funding Rate）。")
+            else:
+                print("\n結論：這是一個線性永續合約，理論上應該有資金費率。")
+
+        else:
+            print(f"錯誤：在 {exchange_id.capitalize()} 上找不到交易對 {symbol}。")
+            
+    except Exception as e:
+        print(f"發生錯誤：{e}")
+    finally:
+        await exchange.close()
+
+async def main():
+    symbol_to_check = "KMNO/USDT"
+    exchange_to_check = "bybit"
+    
+    print(f"正在查詢 {exchange_to_check.capitalize()} 上關於 {symbol_to_check} 的市場資訊...")
+    await check_symbol_type(exchange_to_check, symbol_to_check)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 def check_bybit_market_info():
     # 創建bybit實例
@@ -97,7 +140,4 @@ def check_bybit_market_info():
         print(json.dumps(result, indent=2, default=str))
         
     except Exception as e:
-        print(f"❌ 現貨API調用失敗: {e}")
-
-if __name__ == "__main__":
-    check_bybit_market_info() 
+        print(f"❌ 現貨API調用失敗: {e}") 

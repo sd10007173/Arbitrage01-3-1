@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import ccxt
 import json
 from datetime import datetime

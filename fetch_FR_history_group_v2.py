@@ -184,7 +184,7 @@ async def fetch_and_save_fr(session, task, start_date, end_date):
     if task['list_date']:
         list_date_dt = datetime.fromisoformat(task['list_date']).replace(tzinfo=timezone.utc)
         actual_start_date = max(start_date, list_date_dt)
-        
+
         # 如果上市日期晚於用戶指定的結束日期，直接跳過
         if list_date_dt >= end_date:
             print(f"ℹ️ ({exchange_id.upper()}) {symbol}: 上市日期 ({list_date_dt.date()}) 晚於指定結束日期 ({(end_date - timedelta(days=1)).date()})，跳過。")

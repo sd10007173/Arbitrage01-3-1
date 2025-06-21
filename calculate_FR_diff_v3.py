@@ -115,6 +115,7 @@ def get_data_range_info(symbol: str = None) -> dict:
 def calculate_processing_ranges(symbol: str = None, start_date: str = None, end_date: str = None) -> List[Tuple[str, str]]:
     """
     智能計算需要處理的日期範圍
+    改進版本：檢測中間空洞，確保完整覆蓋
     
     Args:
         symbol: 指定交易對（可選）
@@ -150,7 +151,7 @@ def calculate_processing_ranges(symbol: str = None, start_date: str = None, end_
         source_end = pd.to_datetime(source_info['latest']).strftime('%Y-%m-%d')
         return [(source_start, source_end)]
     
-    # 智能增量與回填策略
+    # 改進的智能增量與空洞檢測策略
     processing_ranges = []
     
     source_start = pd.to_datetime(source_info['earliest'])
@@ -158,25 +159,65 @@ def calculate_processing_ranges(symbol: str = None, start_date: str = None, end_
     result_start = pd.to_datetime(result_info['earliest'])
     result_end = pd.to_datetime(result_info['latest'])
     
-    # 1. 回填歷史空洞（來源數據更早）
-    if source_start < result_start:
-        backfill_end = (result_start - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
-        processing_ranges.append((source_start.strftime('%Y-%m-%d'), backfill_end))
-        log_message(f"📈 添加歷史回填範圍: {source_start.strftime('%Y-%m-%d')} ~ {backfill_end}")
-    
-    # 2. 追加新數據（來源數據更新）
-    if source_end > result_end:
-        # 計算需要處理的新數據範圍
-        # 注意：我們需要基於小時而不是天來計算
-        append_start = (result_end + pd.Timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
-        append_end = source_end.strftime('%Y-%m-%d %H:%M:%S')
+    # 統一的空洞檢測：檢查整個來源數據範圍內的空洞
+    try:
+        db = DatabaseManager()
         
-        # 轉換為日期格式用於查詢
-        append_start_date = (result_end + pd.Timedelta(hours=1)).strftime('%Y-%m-%d')
-        append_end_date = source_end.strftime('%Y-%m-%d')
+        # 獲取來源數據在整個範圍內的所有時間點（小時級別）
+        source_query = """
+            SELECT DISTINCT timestamp_utc
+            FROM funding_rate_history 
+            WHERE timestamp_utc BETWEEN ? AND ?
+        """
+        if symbol:
+            source_query += " AND symbol = ?"
+            source_params = [source_start.strftime('%Y-%m-%d %H:%M:%S'), source_end.strftime('%Y-%m-%d %H:%M:%S'), symbol]
+        else:
+            source_params = [source_start.strftime('%Y-%m-%d %H:%M:%S'), source_end.strftime('%Y-%m-%d %H:%M:%S')]
         
-        processing_ranges.append((append_start_date, append_end_date))
-        log_message(f"📊 添加新數據範圍: {append_start} ~ {append_end} (查詢範圍: {append_start_date} ~ {append_end_date})")
+        # 獲取結果數據在整個來源範圍內的所有時間點（小時級別）
+        result_query = """
+            SELECT DISTINCT timestamp_utc
+            FROM funding_rate_diff 
+            WHERE timestamp_utc BETWEEN ? AND ?
+        """
+        if symbol:
+            result_query += " AND symbol = ?"
+            result_params = [source_start.strftime('%Y-%m-%d %H:%M:%S'), source_end.strftime('%Y-%m-%d %H:%M:%S'), symbol]
+        else:
+            result_params = [source_start.strftime('%Y-%m-%d %H:%M:%S'), source_end.strftime('%Y-%m-%d %H:%M:%S')]
+        
+        with db.get_connection() as conn:
+            source_timestamps = pd.read_sql_query(source_query, conn, params=source_params)['timestamp_utc'].tolist()
+            result_timestamps = pd.read_sql_query(result_query, conn, params=result_params)['timestamp_utc'].tolist()
+        
+        # 找出來源有但結果沒有的時間點（所有空洞，包括歷史和中間空洞）
+        missing_timestamps = set(source_timestamps) - set(result_timestamps)
+        
+        if missing_timestamps:
+            # 將缺失時間點轉換為日期範圍
+            missing_dates = set()
+            for ts in missing_timestamps:
+                date_only = pd.to_datetime(ts).strftime('%Y-%m-%d')
+                missing_dates.add(date_only)
+            
+            missing_dates = sorted(list(missing_dates))
+            log_message(f"🔍 檢測到缺失時間點: {len(missing_timestamps)} 個")
+            log_message(f"🔍 涉及日期: {missing_dates}")
+            
+            # 將缺失日期作為處理範圍
+            if len(missing_dates) == 1:
+                processing_ranges.append((missing_dates[0], missing_dates[0]))
+                log_message(f"🔧 添加處理範圍: {missing_dates[0]} ~ {missing_dates[0]}")
+            else:
+                processing_ranges.append((missing_dates[0], missing_dates[-1]))
+                log_message(f"🔧 添加處理範圍: {missing_dates[0]} ~ {missing_dates[-1]}")
+                
+    except Exception as e:
+        log_message(f"⚠️ 空洞檢測失敗，將使用保守策略: {e}")
+        # 如果空洞檢測失敗，處理整個來源數據範圍
+        processing_ranges.append((source_start.strftime('%Y-%m-%d'), source_end.strftime('%Y-%m-%d')))
+        log_message(f"🔧 使用保守策略處理整個來源範圍: {source_start.strftime('%Y-%m-%d')} ~ {source_end.strftime('%Y-%m-%d')}")
     
     # 如果沒有需要處理的範圍
     if not processing_ranges:
@@ -445,12 +486,10 @@ def insert_fr_diff_with_nulls(db: DatabaseManager, df: pd.DataFrame) -> int:
                 else:
                     insert_row.append(str(row['funding_rate_b']))  # 轉為字符串以符合TEXT類型
                 
-                # diff_ab - 可能為NULL，但數據庫定義為NOT NULL
+                # diff_ab - 可能為NULL，現在數據庫允許NULL值
                 if pd.isna(row['diff_ab']) or row['diff_ab'] is None:
-                    # 根據數據庫schema，diff_ab是NOT NULL，但我們的業務邏輯需要處理null-null的情況
-                    # 為了保持每小時都有記錄，我們將null-null的情況設為0
-                    # 但在funding_rate_a和funding_rate_b中正確記錄NULL值
-                    insert_row.append(0.0)  # null-null的差異設為0
+                    # null-null的情況應該保持NULL
+                    insert_row.append(None)
                 else:
                     # 解決浮點數精度問題：四捨五入到8位小數
                     rounded_diff = round(float(row['diff_ab']), 8)

@@ -211,6 +211,90 @@ EXPERIMENTAL_CONFIGS = {
             'scores': ['extreme_short', 'extreme_long'],
             'weights': [0.9, 0.1]  # 極度偏重短期
         }
+    },
+    
+    # ================================================================
+    # 極簡測試策略 - 用於手工驗證計算過程
+    # ================================================================
+    
+    'test_simple_1d': {
+        'name': '極簡測試1: 純1天ROI，無標準化',
+        'components': {
+            'simple_1d': {
+                'indicators': ['1d_ROI'],
+                'weights': [1.0],
+                'normalize': False  # 關鍵：不標準化，直接使用原值
+            }
+        },
+        'final_combination': {
+            'scores': ['simple_1d'],
+            'weights': [1.0]
+        }
+    },
+    
+    'test_simple_avg': {
+        'name': '極簡測試2: 1天+2天ROI平均，無標準化',
+        'components': {
+            'simple_avg': {
+                'indicators': ['1d_ROI', '2d_ROI'],
+                'weights': [0.5, 0.5],  # 等權重平均
+                'normalize': False  # 不標準化，便於手工計算
+            }
+        },
+        'final_combination': {
+            'scores': ['simple_avg'],
+            'weights': [1.0]
+        }
+    },
+    
+    'test_normalize_1d': {
+        'name': '極簡測試3: 純1天ROI，有標準化',
+        'components': {
+            'normalized_1d': {
+                'indicators': ['1d_ROI'],
+                'weights': [1.0],
+                'normalize': True  # 測試標準化邏輯
+            }
+        },
+        'final_combination': {
+            'scores': ['normalized_1d'],
+            'weights': [1.0]
+        }
+    },
+    
+    'test_weighted_simple': {
+        'name': '極簡測試4: 1天ROI*0.7 + 2天ROI*0.3，無標準化',
+        'components': {
+            'weighted_simple': {
+                'indicators': ['1d_ROI', '2d_ROI'],
+                'weights': [0.7, 0.3],  # 不等權重
+                'normalize': False
+            }
+        },
+        'final_combination': {
+            'scores': ['weighted_simple'],
+            'weights': [1.0]
+        }
+    },
+    
+    'test_two_components': {
+        'name': '極簡測試5: 兩組件組合，無標準化',
+        'components': {
+            'comp_1d': {
+                'indicators': ['1d_ROI'],
+                'weights': [1.0],
+                'normalize': False
+            },
+            'comp_2d': {
+                'indicators': ['2d_ROI'],
+                'weights': [1.0],
+                'normalize': False
+            }
+        },
+        'final_combination': {
+            'scores': ['comp_1d', 'comp_2d'],
+            'weights': [0.6, 0.4]  # 最終組合權重
+        }
     }
 }
 

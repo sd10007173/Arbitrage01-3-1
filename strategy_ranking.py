@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import argparse
-from ranking_config import RANKING_STRATEGIES
+from ranking_config import RANKING_STRATEGIES, EXPERIMENTAL_CONFIGS
 from ranking_engine import RankingEngine
 
 # 添加數據庫支持
@@ -218,16 +218,27 @@ def select_strategies_interactively():
     Returns:
         list: 選擇的策略名稱列表
     """
-    available_strategies = list(RANKING_STRATEGIES.keys())
+    # 合併主要策略和實驗策略
+    all_strategies = {**RANKING_STRATEGIES, **EXPERIMENTAL_CONFIGS}
+    available_strategies = list(all_strategies.keys())
     
-    print("\n🎯 可用策略:")
+    print("\n🎯 主要策略:")
     print("="*50)
     
-    for i, strategy in enumerate(available_strategies, 1):
+    main_count = 0
+    for i, strategy in enumerate(RANKING_STRATEGIES.keys(), 1):
         strategy_info = RANKING_STRATEGIES[strategy]
         print(f"{i}. {strategy:20s} - {strategy_info['name']}")
+        main_count = i
     
-    print(f"{len(available_strategies)+1}. 全部策略 (all)")
+    print(f"\n🧪 實驗/測試策略:")
+    print("="*50)
+    
+    for i, strategy in enumerate(EXPERIMENTAL_CONFIGS.keys(), main_count + 1):
+        strategy_info = EXPERIMENTAL_CONFIGS[strategy]
+        print(f"{i}. {strategy:20s} - {strategy_info['name']}")
+    
+    print(f"\n{len(available_strategies)+1}. 全部策略 (all)")
     print("0. 退出")
     
     while True:
@@ -244,7 +255,11 @@ def select_strategies_interactively():
                 choice_num = int(choice)
                 if 1 <= choice_num <= len(available_strategies):
                     selected_strategy = available_strategies[choice_num-1]
-                    strategy_info = RANKING_STRATEGIES[selected_strategy]
+                    # 根據策略所在位置獲取策略信息
+                    if selected_strategy in RANKING_STRATEGIES:
+                        strategy_info = RANKING_STRATEGIES[selected_strategy]
+                    else:
+                        strategy_info = EXPERIMENTAL_CONFIGS[selected_strategy]
                     print(f"✅ 已選擇策略: {selected_strategy} - {strategy_info['name']}")
                     return [selected_strategy]
                 else:
@@ -283,12 +298,17 @@ def process_date_with_selected_strategies(target_date, selected_strategies):
     successful_strategies = 0
     
     for strategy_name in selected_strategies:
-        if strategy_name not in RANKING_STRATEGIES:
+        # 檢查策略是否存在於主要策略或實驗策略中
+        if strategy_name in RANKING_STRATEGIES:
+            strategy_config = RANKING_STRATEGIES[strategy_name]
+        elif strategy_name in EXPERIMENTAL_CONFIGS:
+            strategy_config = EXPERIMENTAL_CONFIGS[strategy_name]
+        else:
             print(f"   ⚠️ 策略 {strategy_name} 不存在，跳過")
             continue
             
         print(f"\n   🎯 處理策略: {strategy_name}")
-        strategy_config = RANKING_STRATEGIES[strategy_name]
+        # strategy_config 已在上面設置
         
         # 生成策略排行榜
         ranked_df = generate_strategy_ranking(df, strategy_name, strategy_config)
@@ -312,7 +332,11 @@ def process_date_with_selected_strategies(target_date, selected_strategies):
         print("="*80)
         
         for strategy_name, ranked_df in results.items():
-            strategy_info = RANKING_STRATEGIES[strategy_name]
+            # 獲取策略信息
+            if strategy_name in RANKING_STRATEGIES:
+                strategy_info = RANKING_STRATEGIES[strategy_name]
+            else:
+                strategy_info = EXPERIMENTAL_CONFIGS[strategy_name]
             print(f"\n🎯 {strategy_name} ({strategy_info['name']}):")
             
             top_10 = ranked_df.head(10)
@@ -437,17 +461,19 @@ def main():
     
     if args.strategy:
         # 命令行指定策略
-        if args.strategy in RANKING_STRATEGIES:
+        all_strategies = {**RANKING_STRATEGIES, **EXPERIMENTAL_CONFIGS}
+        if args.strategy in all_strategies:
             selected_strategies = [args.strategy]
             print(f"✅ 命令行指定策略: {args.strategy}")
         else:
             print(f"❌ 策略 {args.strategy} 不存在")
-            print(f"可用策略: {list(RANKING_STRATEGIES.keys())}")
+            print(f"可用主要策略: {list(RANKING_STRATEGIES.keys())}")
+            print(f"可用實驗策略: {list(EXPERIMENTAL_CONFIGS.keys())}")
             return
     elif args.auto:
-        # 自動模式 - 處理所有策略
+        # 自動模式 - 處理所有主要策略
         selected_strategies = list(RANKING_STRATEGIES.keys())
-        print("🤖 自動模式：處理所有策略")
+        print("🤖 自動模式：處理所有主要策略")
     else:
         # 互動式選擇策略
         selected_strategies = select_strategies_interactively()

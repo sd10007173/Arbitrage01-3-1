@@ -1093,6 +1093,8 @@ class DatabaseManager(FundingRateDB):
         print(f"✅ 成功插入 {len(data_to_insert)} 條排名持久性事件數據")
         return len(data_to_insert)
 
+
+
 if __name__ == "__main__":
     # 測試數據庫操作
     db = DatabaseManager()

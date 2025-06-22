@@ -688,6 +688,7 @@ class DatabaseManager(FundingRateDB):
                     trade.get('cash_balance'),
                     trade.get('total_balance'),
                     trade.get('rank_position'),
+                    trade.get('position_detail'),
                     trade.get('notes')
                 ))
             
@@ -695,8 +696,8 @@ class DatabaseManager(FundingRateDB):
                 INSERT INTO backtest_trades 
                 (backtest_id, trade_date, trading_pair, action, amount, 
                  funding_rate_diff, position_balance, cash_balance, total_balance,
-                 rank_position, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 rank_position, position_detail, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', data_to_insert)
             
             print(f"✅ 插入回測交易明細: {len(data_to_insert)} 條")

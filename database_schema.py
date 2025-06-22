@@ -190,6 +190,7 @@ class FundingRateDB:
                 cash_balance REAL,              -- 現金餘額
                 total_balance REAL,             -- 總餘額
                 rank_position INTEGER,          -- 當時排名位置
+                position_detail TEXT,           -- 當前持倉詳情，格式: "BT_TEST1(2000), BT_TEST2(1000)"
                 notes TEXT,                     -- 備註（如：為什麼進場/離場）
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 

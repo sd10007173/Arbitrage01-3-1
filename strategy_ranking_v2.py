@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import argparse
-from ranking_config import RANKING_STRATEGIES
+from ranking_config import RANKING_STRATEGIES, EXPERIMENTAL_CONFIGS
 from ranking_engine import RankingEngine
 import time
 
@@ -171,14 +171,27 @@ def select_strategies_interactively():
     Returns:
         list: 選擇的策略名稱列表
     """
-    available_strategies = list(RANKING_STRATEGIES.keys())
+    # 合併主要策略和實驗性策略
+    all_strategies = {**RANKING_STRATEGIES, **EXPERIMENTAL_CONFIGS}
+    available_strategies = list(all_strategies.keys())
     
     print("\n🎯 可用策略:")
     print("="*50)
     
-    for i, strategy in enumerate(available_strategies, 1):
+    # 顯示主要策略
+    main_count = 0
+    for i, strategy in enumerate(RANKING_STRATEGIES.keys(), 1):
         strategy_info = RANKING_STRATEGIES[strategy]
         print(f"{i}. {strategy:20s} - {strategy_info['name']}")
+        main_count = i
+    
+    # 顯示實驗性策略
+    if EXPERIMENTAL_CONFIGS:
+        print("\n🧪 實驗性策略:")
+        print("-" * 30)
+        for i, strategy in enumerate(EXPERIMENTAL_CONFIGS.keys(), main_count + 1):
+            strategy_info = EXPERIMENTAL_CONFIGS[strategy]
+            print(f"{i}. {strategy:20s} - {strategy_info['name']}")
     
     print(f"{len(available_strategies)+1}. 全部策略 (all)")
     print("0. 退出")
@@ -197,7 +210,11 @@ def select_strategies_interactively():
                 choice_num = int(choice)
                 if 1 <= choice_num <= len(available_strategies):
                     selected_strategy = available_strategies[choice_num-1]
-                    strategy_info = RANKING_STRATEGIES[selected_strategy]
+                    # 檢查策略在哪個配置中
+                    if selected_strategy in RANKING_STRATEGIES:
+                        strategy_info = RANKING_STRATEGIES[selected_strategy]
+                    else:
+                        strategy_info = EXPERIMENTAL_CONFIGS[selected_strategy]
                     print(f"✅ 已選擇策略: {selected_strategy} - {strategy_info['name']}")
                     return [selected_strategy]
                 else:
@@ -263,8 +280,12 @@ def main():
 
     # 4. 逐一計算並保存每個策略的排名
     for strategy_name in selected_strategies:
-        strategy_config = RANKING_STRATEGIES.get(strategy_name)
-        if not strategy_config:
+        # 檢查策略在哪個配置中
+        if strategy_name in RANKING_STRATEGIES:
+            strategy_config = RANKING_STRATEGIES[strategy_name]
+        elif strategy_name in EXPERIMENTAL_CONFIGS:
+            strategy_config = EXPERIMENTAL_CONFIGS[strategy_name]
+        else:
             print(f"⚠️ 找不到名為 '{strategy_name}' 的策略配置，跳過。")
             continue
 

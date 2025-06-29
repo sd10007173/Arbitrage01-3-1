@@ -4,7 +4,10 @@
       "Bash(sqlite3:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

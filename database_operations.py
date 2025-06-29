@@ -519,8 +519,19 @@ class DatabaseManager(FundingRateDB):
                 print(f"❌ DataFrame 中缺少必需的列: {', '.join(missing_cols)}")
                 return 0
             
+            # 檢查是否有 calculation 欄位，如果有則加入插入列表
+            optional_columns = []
+            if 'calculation' in db_df.columns:
+                optional_columns.append('calculation')
+                print(f"   - 發現 calculation 欄位，將包含計算詳情...")
+                # 將 calculation 字典轉換為 JSON 字串
+                db_df['calculation'] = db_df['calculation'].apply(
+                    lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, dict) else str(x) if x is not None else None
+                )
+            
             # 準備最終要插入的數據
-            data_to_insert = db_df[required_columns]
+            all_columns = required_columns + optional_columns
+            data_to_insert = db_df[all_columns]
 
             # --- 3. 執行高效的批量插入 ---
             print(f"   - 準備插入 {len(data_to_insert)} 條新記錄...")
@@ -529,7 +540,8 @@ class DatabaseManager(FundingRateDB):
                 records = data_to_insert.to_records(index=False).tolist()
                 
                 # 使用 executemany 進行批量插入
-                insert_query = f"INSERT INTO strategy_ranking ({', '.join(required_columns)}) VALUES (?, ?, ?, ?, ?)"
+                placeholders = ', '.join(['?' for _ in all_columns])
+                insert_query = f"INSERT INTO strategy_ranking ({', '.join(all_columns)}) VALUES ({placeholders})"
                 cursor.executemany(insert_query, records)
                 
                 # 提交事務

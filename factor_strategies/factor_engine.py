@@ -15,6 +15,7 @@
 
 import pandas as pd
 import numpy as np
+import json
 from typing import Dict, List, Any, Optional
 import sys
 import os
@@ -154,6 +155,96 @@ class FactorEngine:
         
         return score
     
+    def calculate_factor_for_trading_pair_with_details(self, pair_data: pd.DataFrame, factor_config: Dict[str, Any]) -> tuple[float, Dict[str, Any]]:
+        """
+        為單個交易對計算因子分數並返回詳細計算過程
+        
+        Args:
+            pair_data: 單個交易對的歷史數據
+            factor_config: 因子配置
+            
+        Returns:
+            (因子分數, 計算詳情字典)
+        """
+        function_name = factor_config['function']
+        window = factor_config['window']
+        input_col = factor_config['input_col']
+        params = factor_config.get('params', {})
+        
+        # 初始化計算詳情
+        details = {
+            'function': function_name,
+            'window': window,
+            'input_column': input_col,
+            'params': params.copy(),
+            'data_points_available': len(pair_data),
+            'data_points_used': 0,
+            'input_data_sample': [],
+            'raw_score': np.nan,
+            'calculation_status': 'failed'
+        }
+        
+        # 檢查函數是否存在
+        if function_name not in self.factor_functions:
+            details['error'] = f"未知的因子函數: {function_name}"
+            return np.nan, details
+        
+        # 檢查輸入列是否存在
+        if input_col not in pair_data.columns:
+            details['error'] = f"數據中缺少列: {input_col}"
+            return np.nan, details
+        
+        # 獲取最近的數據窗口
+        recent_data = pair_data.tail(window)
+        details['data_points_used'] = len(recent_data)
+        
+        # 檢查數據點數量，至少需要2個數據點才能計算趨勢
+        min_required_points = max(2, min(window // 4, 3))  # 動態調整最小數據點要求
+        if len(recent_data) < min_required_points:
+            details['error'] = f"數據點不足: 需要至少 {min_required_points} 個，實際 {len(recent_data)} 個"
+            return np.nan, details
+        
+        # 獲取輸入序列
+        input_series = recent_data[input_col]
+        
+        # 保存輸入數據樣本（前5個和後5個數據點）
+        input_list = input_series.tolist()
+        if len(input_list) <= 10:
+            details['input_data_sample'] = input_list
+        else:
+            details['input_data_sample'] = {
+                'first_5': input_list[:5],
+                'last_5': input_list[-5:],
+                'total_points': len(input_list)
+            }
+        
+        # 根據不同因子函數收集額外詳情
+        if function_name == 'calculate_sharpe_ratio':
+            details['mean_return'] = float(input_series.mean())
+            details['std_dev'] = float(input_series.std())
+            details['annualizing_factor'] = params.get('annualizing_factor', 1)
+        elif function_name == 'calculate_win_rate':
+            positive_returns = (input_series > 0).sum()
+            details['positive_days'] = int(positive_returns)
+            details['total_days'] = len(input_series)
+            details['win_rate_raw'] = positive_returns / len(input_series) if len(input_series) > 0 else 0
+        elif function_name == 'calculate_inv_std_dev':
+            details['std_dev'] = float(input_series.std())
+            details['epsilon'] = params.get('epsilon', 1e-9)
+        
+        # 調用因子計算函數
+        try:
+            factor_function = self.factor_functions[function_name]
+            score = factor_function(input_series, **params)
+            details['raw_score'] = float(score) if not np.isnan(score) else np.nan
+            details['calculation_status'] = 'success' if not np.isnan(score) else 'nan_result'
+        except Exception as e:
+            details['error'] = str(e)
+            details['calculation_status'] = 'exception'
+            score = np.nan
+        
+        return score, details
+    
     def calculate_strategy_ranking(self, strategy_name: str, target_date: str = None) -> pd.DataFrame:
         """
         計算策略排名
@@ -187,27 +278,51 @@ class FactorEngine:
         for pair in trading_pairs:
             pair_data = df[df['trading_pair'] == pair].sort_values('date')
             
-            # 計算所有因子分數
+            # 計算所有因子分數並收集詳細資訊
             factor_scores = {}
             component_scores = {}
+            calculation_details = {
+                'strategy_config': {
+                    'name': strategy_name,
+                    'factors': list(strategy_config['factors'].keys()),
+                    'weights': strategy_config['ranking_logic']['weights']
+                },
+                'raw_data': {
+                    'trading_pair': pair,
+                    'target_date': target_date,
+                    'data_points_available': len(pair_data),
+                    'date_range': {
+                        'start': str(pair_data['date'].min()) if not pair_data.empty else None,
+                        'end': str(pair_data['date'].max()) if not pair_data.empty else None
+                    }
+                },
+                'factor_calculations': {},
+                'final_calculation': {}
+            }
             
             for factor_name, factor_config in strategy_config['factors'].items():
                 try:
-                    score = self.calculate_factor_for_trading_pair(pair_data, factor_config)
+                    score, details = self.calculate_factor_for_trading_pair_with_details(pair_data, factor_config)
                     factor_scores[factor_name] = score
                     component_scores[factor_name] = score
+                    calculation_details['factor_calculations'][factor_name] = details
                 except Exception as e:
                     print(f"⚠️ 計算 {pair} 的因子 {factor_name} 時出錯: {e}")
                     factor_scores[factor_name] = np.nan
                     component_scores[factor_name] = np.nan
+                    calculation_details['factor_calculations'][factor_name] = {
+                        'error': str(e),
+                        'calculation_status': 'exception'
+                    }
             
             # 檢查是否有有效的因子分數
             valid_scores = [s for s in factor_scores.values() if not np.isnan(s)]
             if not valid_scores:
                 continue
             
-            # 計算最終排名分數
-            final_score = self._calculate_final_score(factor_scores, strategy_config['ranking_logic'])
+            # 計算最終排名分數並收集計算詳情
+            final_score, final_details = self._calculate_final_score_with_details(factor_scores, strategy_config['ranking_logic'])
+            calculation_details['final_calculation'] = final_details
             
             results.append({
                 'trading_pair': pair,
@@ -217,7 +332,8 @@ class FactorEngine:
                 'long_term_score': final_score,  # 暫時使用最終分數
                 'short_term_score': final_score,  # 暫時使用最終分數
                 'combined_roi_z_score': final_score,  # 暫時使用最終分數
-                'final_combination_value': f"Factors: {list(factor_scores.keys())}"
+                'final_combination_value': f"Factors: {list(factor_scores.keys())}",
+                'calculation': calculation_details  # 新增計算詳情
             })
         
         # 轉換為 DataFrame
@@ -269,6 +385,88 @@ class FactorEngine:
         final_score = weighted_sum / total_weight
         
         return final_score
+    
+    def _calculate_final_score_with_details(self, factor_scores: Dict[str, float], ranking_logic: Dict[str, Any]) -> tuple[float, Dict[str, Any]]:
+        """
+        計算最終排名分數並返回計算詳情
+        
+        Args:
+            factor_scores: 各因子分數字典
+            ranking_logic: 排名邏輯配置
+            
+        Returns:
+            (最終分數, 計算詳情)
+        """
+        indicators = ranking_logic['indicators']
+        weights = ranking_logic['weights']
+        
+        details = {
+            'indicators': indicators,
+            'weights': weights,
+            'factor_contributions': {},
+            'weighted_sum_formula': '',
+            'calculation_breakdown': {},
+            'total_weight_used': 0.0,
+            'final_score': np.nan
+        }
+        
+        if len(indicators) != len(weights):
+            details['error'] = "因子數量與權重數量不匹配"
+            return np.nan, details
+        
+        # 計算加權分數
+        weighted_sum = 0.0
+        total_weight = 0.0
+        formula_parts = []
+        
+        for indicator, weight in zip(indicators, weights):
+            if indicator in factor_scores:
+                score = factor_scores[indicator]
+                if not np.isnan(score):
+                    contribution = score * weight
+                    weighted_sum += contribution
+                    total_weight += weight
+                    
+                    details['factor_contributions'][indicator] = {
+                        'raw_score': float(score),
+                        'weight': float(weight),
+                        'contribution': float(contribution)
+                    }
+                    
+                    formula_parts.append(f"({score:.6f} × {weight})")
+                else:
+                    details['factor_contributions'][indicator] = {
+                        'raw_score': 'NaN',
+                        'weight': float(weight),
+                        'contribution': 0.0,
+                        'status': 'excluded_nan'
+                    }
+            else:
+                details['factor_contributions'][indicator] = {
+                    'raw_score': 'missing',
+                    'weight': float(weight),
+                    'contribution': 0.0,
+                    'status': 'missing_factor'
+                }
+        
+        details['weighted_sum_formula'] = ' + '.join(formula_parts) if formula_parts else 'No valid factors'
+        details['total_weight_used'] = float(total_weight)
+        
+        if total_weight == 0:
+            details['final_score'] = np.nan
+            details['error'] = '沒有有效的因子分數'
+            return np.nan, details
+        
+        # 正規化權重
+        final_score = weighted_sum / total_weight
+        details['final_score'] = float(final_score)
+        details['calculation_breakdown'] = {
+            'weighted_sum': float(weighted_sum),
+            'total_weight': float(total_weight),
+            'normalized_score': float(final_score)
+        }
+        
+        return final_score, details
     
     def check_data_sufficiency(self, strategy_name: str, target_date: str = None) -> tuple[bool, str]:
         """

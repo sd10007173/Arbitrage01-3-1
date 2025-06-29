@@ -34,24 +34,24 @@ FACTOR_STRATEGIES = {
             'F_trend': {
                 'function': 'calculate_trend_slope',     # 對應 factor_library.py 中的函式名
                 'window': 90,                            # 計算所需的回看天數
-                'input_col': 'roi_1d',                   # 計算所需的數據欄位（數據庫版本）
+                'input_col': 'return_1d',                # 修改：使用日收益率而非年化ROI
             },
             'F_sharpe': {
                 'function': 'calculate_sharpe_ratio',
                 'window': 60,
-                'input_col': 'roi_1d',                   # 使用1日ROI計算夏普比率
+                'input_col': 'return_1d',                # 修改：使用日收益率計算夏普比率
                 'params': {'annualizing_factor': 365}    # 傳遞給計算函式的額外參數
             },
             'F_stability': {
                 'function': 'calculate_inv_std_dev',
                 'window': 60,
-                'input_col': 'roi_1d',
+                'input_col': 'return_1d',                # 修改：使用日收益率
                 'params': {'epsilon': 1e-9}
             },
             'F_winrate': {
                 'function': 'calculate_win_rate',
                 'window': 60,
-                'input_col': 'roi_1d',
+                'input_col': 'return_1d',                # 修改：使用日收益率
             }
         },
 
@@ -73,17 +73,17 @@ FACTOR_STRATEGIES = {
             'F_trend_long': {
                 'function': 'calculate_trend_slope',
                 'window': 90,
-                'input_col': 'roi_7d',                   # 使用7日ROI計算長期趨勢
+                'input_col': 'return_7d',                # 修改：使用7日收益率
             },
             'F_trend_short': {
                 'function': 'calculate_trend_slope',
                 'window': 30,
-                'input_col': 'roi_1d',                   # 使用1日ROI計算短期趨勢
+                'input_col': 'return_1d',                # 修改：使用1日收益率
             },
             'F_sharpe_momentum': {
                 'function': 'calculate_sharpe_ratio',
                 'window': 30,
-                'input_col': 'roi_1d',
+                'input_col': 'return_1d',                # 修改：使用1日收益率
                 'params': {'annualizing_factor': 365}
             },
         },
@@ -104,30 +104,59 @@ FACTOR_STRATEGIES = {
             'F_stability_long': {
                 'function': 'calculate_inv_std_dev',
                 'window': 90,
-                'input_col': 'roi_7d',
+                'input_col': 'return_7d',                # 修改：使用7日收益率
                 'params': {'epsilon': 1e-9}
             },
             'F_stability_short': {
                 'function': 'calculate_inv_std_dev',
                 'window': 30,
-                'input_col': 'roi_1d',
+                'input_col': 'return_1d',                # 修改：使用1日收益率
                 'params': {'epsilon': 1e-9}
             },
             'F_winrate_consistent': {
                 'function': 'calculate_win_rate',
                 'window': 90,
-                'input_col': 'roi_1d',
+                'input_col': 'return_1d',                # 修改：使用1日收益率
             },
             'F_sharpe_stable': {
                 'function': 'calculate_sharpe_ratio',
                 'window': 90,
-                'input_col': 'roi_7d',
+                'input_col': 'return_7d',                # 修改：使用7日收益率
                 'params': {'annualizing_factor': 52}     # 週化夏普比率
             }
         },
         'ranking_logic': {
             'indicators': ['F_stability_long', 'F_stability_short', 'F_winrate_consistent', 'F_sharpe_stable'],
             'weights': [0.35, 0.25, 0.25, 0.15]
+        }
+    },
+
+        
+
+    'sharpe_only_60d': {
+        'name': 'Sharpe-Only Strategy_60d',
+        'description': '只使用夏普比率的純粹風險調整收益策略，適合尋找風險調整後表現最佳的交易對。',
+        
+        # --- 數據准入規則 ---
+        'data_requirements': {
+            'min_data_days': 30,         # 需要30天歷史數據
+            'skip_first_n_days': 3,      # 跳過前3天新幣穩定期
+        },
+
+        # --- 因子定義 ---
+        'factors': {
+            'F_sharpe_pure': {
+                'function': 'calculate_sharpe_ratio',
+                'window': 60,                            # 使用60天窗口計算夏普比率
+                'input_col': 'return_1d',                # 基於日收益率計算
+                'params': {'annualizing_factor': 365}    # 年化參數
+            }
+        },
+
+        # --- 最終排名邏輯 ---
+        'ranking_logic': {
+            'indicators': ['F_sharpe_pure'],
+            'weights': [1.0]                             # 100%權重給夏普比率
         }
     },
 
@@ -143,7 +172,7 @@ FACTOR_STRATEGIES = {
             'F_simple_trend': {
                 'function': 'calculate_trend_slope',     # 只用一個簡單的因子
                 'window': 7,                             # 短回看週期
-                'input_col': 'roi_1d'
+                'input_col': 'return_1d'                 # 修改：使用1日收益率
             },
         },
         'ranking_logic': {

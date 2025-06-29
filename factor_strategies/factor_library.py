@@ -19,20 +19,19 @@ from scipy.stats import linregress
 
 def calculate_trend_slope(series: pd.Series, **kwargs) -> float:
     """
-    計算累積回報序列的線性回歸斜率。
+    計算回報率序列的線性回歸斜率。
     用於衡量長期趨勢的方向和強度。
 
     Args:
-        series (pd.Series): 一段時間內的回報率序列 (例如 'roi_1d')。
+        series (pd.Series): 一段時間內的回報率序列 (例如 'return_1d')。
 
     Returns:
         float: 計算出的回歸線斜率。正值表示上升趋势，負值表示下降趋势。
                如果數據不足，返回 np.nan。
     
     計算邏輯：
-        1. 將回報率序列轉換為累積回報
-        2. 對累積回報進行線性回歸
-        3. 返回回歸線的斜率
+        修正版本：直接對原始回報率序列進行線性回歸，不做累積和
+        這樣可以正確反映趨勢的真實斜率
     """
     if len(series) < 2:
         return np.nan
@@ -42,12 +41,11 @@ def calculate_trend_slope(series: pd.Series, **kwargs) -> float:
     if len(series) < 2:
         return np.nan
 
-    # 計算累積回報
-    cumulative_return = series.cumsum()
-    time_index = np.arange(len(cumulative_return))
+    # 修正：直接對原始數據做線性回歸，不做累積和
+    time_index = np.arange(len(series))
     
     # 使用scipy.stats.linregress計算斜率，它高效且穩定
-    slope, _, _, _, _ = linregress(time_index, cumulative_return)
+    slope, _, _, _, _ = linregress(time_index, series)
     
     return slope
 

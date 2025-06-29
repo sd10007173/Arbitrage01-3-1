@@ -1,3 +1,14 @@
+"""
+資金費率套利回測系統 V4
+
+V4 新增功能：
+- 在淨值曲線圖上標記 Backtest ID
+- 在圖表中顯示關鍵績效指標摘要
+- 優化檔案命名，包含 Backtest ID
+
+基於 backtest_v3.py 開發
+"""
+
 import pandas as pd
 import numpy as np
 import os
@@ -17,12 +28,12 @@ plt.rcParams['axes.unicode_minus'] = False
 
 # ===== 策略參數設定（在這裡修改你的參數）=====
 INITIAL_CAPITAL = 10000  # 初始資金
-POSITION_SIZE = 0.33  # 每次進場資金比例 (25%)
+POSITION_SIZE = 0.5  # 每次進場資金比例 (25%)
 FEE_RATE = 0.0007  # 手續費率 (0.07%)
 EXIT_SIZE = 1.0  # 每次離場資金比例 (100%)
 MAX_POSITIONS = 3  # 最大持倉數 <<<--- 在這裡修改
 ENTRY_TOP_N = 3  # 進場條件: 綜合評分前N名 <<<--- 在這裡修改
-EXIT_THRESHOLD = 33  # 離場條件: 排名跌出前N名
+EXIT_THRESHOLD = 20  # 離場條件: 排名跌出前N名
 
 # ===== 回測期間設定 =====
 START_DATE = "2024-01-01"  # 開始日期 (修改為有數據的日期)
@@ -465,7 +476,7 @@ class FundingRateBacktest:
 
     def plot_equity_curve(self, output_dir="data/picture/backtest"):
         """
-        繪製淨值曲線圖，參考用戶提供的樣式
+        繪製淨值曲線圖，參考用戶提供的樣式，並在圖上標記backtest ID
         :param output_dir: 輸出目錄，默認為 data/picture/backtest
         """
         if not self.equity_curve_data:
@@ -500,6 +511,14 @@ class FundingRateBacktest:
         # 格式化Y軸 - 使用美元格式
         ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
 
+        # V4新增：在上圖添加Backtest ID標記
+        if hasattr(self, 'backtest_id') and self.backtest_id:
+            # 在圖表右上角添加backtest ID
+            ax1.text(0.98, 0.98, f'Backtest ID: {self.backtest_id}', 
+                    transform=ax1.transAxes, fontsize=9,
+                    verticalalignment='top', horizontalalignment='right',
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.7))
+
         # 下圖：累計報酬率 - 參考用戶樣式
         ax2.plot(df['date'], df['returns'], linewidth=2, color='#d62728', label='累計報酬率')
         ax2.axhline(y=0, color='red', linestyle='--', alpha=0.8, label='損益平衡線')
@@ -508,6 +527,20 @@ class FundingRateBacktest:
         ax2.set_ylabel('報酬率 (%)', fontsize=12)
         ax2.grid(True, alpha=0.3)
         ax2.legend()
+
+        # V4新增：在下圖也添加關鍵回測資訊
+        if hasattr(self, 'backtest_id') and self.backtest_id:
+            # 計算最終績效指標
+            final_return = df['returns'].iloc[-1] if not df.empty else 0
+            max_return = df['returns'].max() if not df.empty else 0
+            min_return = df['returns'].min() if not df.empty else 0
+            
+            # 在圖表左下角添加績效摘要
+            performance_text = f'最終收益: {final_return:.2f}%\n最大收益: {max_return:.2f}%\n最大回撤: {min_return:.2f}%'
+            ax2.text(0.02, 0.02, performance_text, 
+                    transform=ax2.transAxes, fontsize=9,
+                    verticalalignment='bottom', horizontalalignment='left',
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', alpha=0.7))
 
         # 格式化日期軸 - 使用月份間隔
         for ax in [ax1, ax2]:
@@ -522,7 +555,15 @@ class FundingRateBacktest:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         start_date_str = self.start_date.strftime('%Y-%m-%d') if hasattr(self.start_date, 'strftime') else str(self.start_date).split()[0]
         end_date_str = self.end_date.strftime('%Y-%m-%d') if hasattr(self.end_date, 'strftime') else str(self.end_date).split()[0]
-        filename = f"equity_curve_{self.strategy_name}_{start_date_str}_{end_date_str}_{timestamp}.png"
+        
+        # V4新增：檔案名中包含backtest_id的簡化版本
+        if hasattr(self, 'backtest_id') and self.backtest_id:
+            # 提取backtest_id的最後部分作為識別
+            id_suffix = self.backtest_id.split('_')[-1]  # 例如：20250624_135149
+            filename = f"equity_curve_{self.strategy_name}_{id_suffix}.png"
+        else:
+            filename = f"equity_curve_{self.strategy_name}_{start_date_str}_{end_date_str}_{timestamp}.png"
+            
         chart_path = os.path.join(output_dir, filename)
 
         # 保存圖表
@@ -531,6 +572,7 @@ class FundingRateBacktest:
         plt.close()
 
         print(f"✅ 淨值曲線圖已保存: {chart_path}")
+        print(f"📊 圖表包含 Backtest ID: {self.backtest_id if hasattr(self, 'backtest_id') else 'N/A'}")
         return chart_path
 
     def load_strategy_ranking_data(self, strategy_name, start_date, end_date):
@@ -1219,7 +1261,8 @@ class FundingRateBacktest:
 # 使用範例
 if __name__ == "__main__":
     print("\n" + "="*70)
-    print("🚀 智能策略回測系統")
+    print("🚀 智能策略回測系統 V4")
+    print("💡 V4新功能: 淨值曲線圖包含Backtest ID標記")
     print("="*70)
     
     # 初始化回測器（使用全域變數）

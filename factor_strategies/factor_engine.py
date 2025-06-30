@@ -19,6 +19,7 @@ import json
 from typing import Dict, List, Any, Optional
 import sys
 import os
+from datetime import datetime
 
 # 添加父目錄到 Python 路徑，以便導入核心模組
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,6 +27,187 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database_operations import DatabaseManager
 from factor_strategies.factor_library import *
 from factor_strategies.factor_strategy_config import FACTOR_STRATEGIES
+
+class CalculationFormatter:
+    """用於格式化 calculation 數據的工具類"""
+    
+    @staticmethod
+    def format_number(value, precision=6):
+        """格式化數值，避免科學記號，統一小數位數"""
+        if value is None or (isinstance(value, float) and np.isnan(value)):
+            return "N/A"
+        
+        if isinstance(value, (int, float)):
+            abs_val = abs(value)
+            
+            # 處理非常小的數值
+            if abs_val < 1e-6 and abs_val > 0:
+                return f"{value:.2e}"
+            
+            # 處理小數
+            elif abs_val < 1:
+                return f"{value:.6f}".rstrip('0').rstrip('.')
+            
+            # 處理大數
+            elif abs_val >= 1000:
+                return f"{value:,.2f}"
+            
+            # 處理一般數值
+            else:
+                return f"{value:.4f}".rstrip('0').rstrip('.')
+        
+        return str(value)
+    
+    @staticmethod
+    def format_percentage(value):
+        """格式化百分比"""
+        if value is None:
+            return "N/A"
+        return f"{value * 100:.1f}%"
+    
+    @staticmethod
+    def format_data_sample(data_sample):
+        """格式化數據樣本"""
+        if isinstance(data_sample, dict) and 'first_5' in data_sample:
+            first_5 = [CalculationFormatter.format_number(x) for x in data_sample['first_5']]
+            last_5 = [CalculationFormatter.format_number(x) for x in data_sample['last_5']]
+            return f"前5個: [{', '.join(first_5)}] ... 後5個: [{', '.join(last_5)}] (共{data_sample['total_points']}個數據點)"
+        elif isinstance(data_sample, list):
+            formatted = [CalculationFormatter.format_number(x) for x in data_sample]
+            return f"[{', '.join(formatted)}]"
+        else:
+            return str(data_sample)
+    
+    @staticmethod
+    def create_formatted_calculation(raw_calculation):
+        """創建格式化的 calculation 報告"""
+        try:
+            strategy_config = raw_calculation.get('strategy_config', {})
+            raw_data = raw_calculation.get('raw_data', {})
+            factor_calculations = raw_calculation.get('factor_calculations', {})
+            final_calculation = raw_calculation.get('final_calculation', {})
+            
+            # 1. 策略概覽
+            overview = {
+                "策略名稱": strategy_config.get('name', 'Unknown'),
+                "交易對": raw_data.get('trading_pair', 'Unknown'),
+                "計算日期": raw_data.get('target_date', 'Unknown'),
+                "數據期間": f"{raw_data.get('date_range', {}).get('start', 'Unknown')} 至 {raw_data.get('date_range', {}).get('end', 'Unknown')}",
+                "可用數據點": raw_data.get('data_points_available', 0)
+            }
+            
+            # 2. 因子計算結果摘要
+            factor_summary = []
+            factor_contributions = final_calculation.get('factor_contributions', {})
+            
+            for factor_name in strategy_config.get('factors', []):
+                if factor_name in factor_calculations:
+                    factor_data = factor_calculations[factor_name]
+                    contribution_data = factor_contributions.get(factor_name, {})
+                    
+                    factor_info = {
+                        "因子名稱": factor_name,
+                        "原始分數": CalculationFormatter.format_number(factor_data.get('raw_score')),
+                        "權重": CalculationFormatter.format_percentage(contribution_data.get('weight')),
+                        "貢獻值": CalculationFormatter.format_number(contribution_data.get('contribution')),
+                        "計算狀態": factor_data.get('calculation_status', 'unknown')
+                    }
+                    factor_summary.append(factor_info)
+            
+            # 3. 最終計算摘要
+            calculation_summary = {
+                "加權公式": final_calculation.get('weighted_sum_formula', ''),
+                "加權總和": CalculationFormatter.format_number(final_calculation.get('calculation_breakdown', {}).get('weighted_sum')),
+                "最終分數": CalculationFormatter.format_number(final_calculation.get('final_score')),
+                "使用權重": CalculationFormatter.format_percentage(final_calculation.get('total_weight_used'))
+            }
+            
+            # 4. 詳細計算資訊 (可選)
+            detailed_factors = {}
+            for factor_name, factor_data in factor_calculations.items():
+                detailed_info = {
+                    "計算函數": factor_data.get('function', ''),
+                    "時間窗口": f"{factor_data.get('window', 0)}天",
+                    "輸入欄位": factor_data.get('input_column', ''),
+                    "使用數據點": factor_data.get('data_points_used', 0),
+                    "數據樣本": CalculationFormatter.format_data_sample(factor_data.get('input_data_sample', []))
+                }
+                
+                # 添加特定因子的額外資訊
+                if 'mean_return' in factor_data:
+                    detailed_info["平均收益率"] = CalculationFormatter.format_number(factor_data['mean_return'])
+                if 'std_dev' in factor_data:
+                    detailed_info["標準差"] = CalculationFormatter.format_number(factor_data['std_dev'])
+                if 'positive_days' in factor_data:
+                    detailed_info["獲利天數"] = f"{factor_data['positive_days']}/{factor_data.get('total_days', 0)}"
+                
+                detailed_factors[factor_name] = detailed_info
+            
+            # 組合成最終的格式化報告
+            formatted_report = {
+                "報告生成時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "策略概覽": overview,
+                "因子計算摘要": factor_summary,
+                "最終計算": calculation_summary,
+                "詳細計算資訊": detailed_factors,
+                "原始數據": raw_calculation  # 保留原始數據供 debug 使用
+            }
+            
+            return formatted_report
+            
+        except Exception as e:
+            return {
+                "錯誤": f"格式化失敗: {str(e)}",
+                "原始數據": raw_calculation
+            }
+    
+    @staticmethod
+    def create_readable_report(formatted_calculation):
+        """創建人類可讀的文字報告"""
+        try:
+            overview = formatted_calculation.get('策略概覽', {})
+            factor_summary = formatted_calculation.get('因子計算摘要', [])
+            final_calc = formatted_calculation.get('最終計算', {})
+            
+            report_lines = []
+            report_lines.append("=" * 60)
+            report_lines.append("📊 策略執行計算報告")
+            report_lines.append("=" * 60)
+            
+            # 基本資訊
+            report_lines.append(f"策略: {overview.get('策略名稱', '')}")
+            report_lines.append(f"交易對: {overview.get('交易對', '')}")
+            report_lines.append(f"計算日期: {overview.get('計算日期', '')}")
+            report_lines.append(f"數據期間: {overview.get('數據期間', '')}")
+            report_lines.append(f"可用數據: {overview.get('可用數據點', 0)} 天")
+            report_lines.append("")
+            
+            # 因子計算結果
+            report_lines.append("📈 因子計算結果")
+            report_lines.append("-" * 60)
+            for factor in factor_summary:
+                report_lines.append(
+                    f"{factor['因子名稱']:<15} | "
+                    f"分數: {factor['原始分數']:<12} | "
+                    f"權重: {factor['權重']:<8} | "
+                    f"貢獻: {factor['貢獻值']:<12} | "
+                    f"狀態: {factor['計算狀態']}"
+                )
+            report_lines.append("")
+            
+            # 最終計算
+            report_lines.append("🎯 最終計算")
+            report_lines.append("-" * 60)
+            report_lines.append(f"計算公式: {final_calc.get('加權公式', '')}")
+            report_lines.append(f"加權總和: {final_calc.get('加權總和', '')}")
+            report_lines.append(f"最終分數: {final_calc.get('最終分數', '')}")
+            report_lines.append(f"權重使用: {final_calc.get('使用權重', '')}")
+            report_lines.append("=" * 60)
+            
+            return "\n".join(report_lines)
+            
+        except Exception as e:
+            return f"報告生成失敗: {str(e)}"
 
 class FactorEngine:
     """因子計算引擎"""
@@ -324,6 +506,9 @@ class FactorEngine:
             final_score, final_details = self._calculate_final_score_with_details(factor_scores, strategy_config['ranking_logic'])
             calculation_details['final_calculation'] = final_details
             
+            # 創建格式化的 calculation 報告
+            formatted_calculation = CalculationFormatter.create_formatted_calculation(calculation_details)
+            
             results.append({
                 'trading_pair': pair,
                 'date': target_date,
@@ -333,7 +518,7 @@ class FactorEngine:
                 'short_term_score': final_score,  # 暫時使用最終分數
                 'combined_roi_z_score': final_score,  # 暫時使用最終分數
                 'final_combination_value': f"Factors: {list(factor_scores.keys())}",
-                'calculation': calculation_details  # 新增計算詳情
+                'calculation': formatted_calculation  # 新增格式化的計算詳情
             })
         
         # 轉換為 DataFrame
